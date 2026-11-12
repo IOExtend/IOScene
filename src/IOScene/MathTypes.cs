@@ -183,13 +183,13 @@ public readonly record struct RgbaColor(byte R, byte G, byte B, byte A = 255)
     /// <summary>Opaque light grey (180, 180, 180).</summary>
     public static readonly RgbaColor Gray = new(180, 180, 180);
 
-    /// <summary>Red as a number from 0 to 1.</summary>
+    /// <summary>Red as a number from 0 to 1, still sRGB-encoded (R / 255).</summary>
     public double Rf => R / 255.0;
 
-    /// <summary>Green as a number from 0 to 1.</summary>
+    /// <summary>Green as a number from 0 to 1, still sRGB-encoded (G / 255).</summary>
     public double Gf => G / 255.0;
 
-    /// <summary>Blue as a number from 0 to 1.</summary>
+    /// <summary>Blue as a number from 0 to 1, still sRGB-encoded (B / 255).</summary>
     public double Bf => B / 255.0;
 
     /// <summary>Alpha as a number from 0 to 1.</summary>

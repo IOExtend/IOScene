@@ -30,10 +30,16 @@ public sealed class SceneTask
     /// <summary>What the task does to its elements.</summary>
     public SceneTaskType TaskType { get; set; }
 
-    /// <summary>Planned start.</summary>
+    /// <summary>
+    /// Planned start. The default, <c>0001-01-01T00:00:00+00:00</c>, means not given: a consumer leaves the task out of
+    /// time-based views.
+    /// </summary>
     public DateTimeOffset PlannedStart { get; set; }
 
-    /// <summary>Planned end.</summary>
+    /// <summary>
+    /// Planned end. The default, <c>0001-01-01T00:00:00+00:00</c>, means not given: a consumer leaves the task out of
+    /// time-based views.
+    /// </summary>
     public DateTimeOffset PlannedEnd { get; set; }
 
     /// <summary>Actual start, or null.</summary>

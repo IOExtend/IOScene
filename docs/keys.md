@@ -22,14 +22,15 @@ This file is the registry of the namespaces, of their key formats and of the `Sc
    and producers keep writing it until the next breaking `IOScene` minor.
 7. Keys are compared as whole strings (ordinal) and never parsed back.
 8. A key may appear in several property sets of one element. A lookup by key takes the first set in
-   `SceneElement.PropertySetIds` that has it. Producers list occurrence (instance) sets before type sets.
+   `SceneElement.PropertySetIds` that has it, and the first property of that set with the key. Producers list
+   occurrence (instance) sets before type sets.
 
 ## Namespaces
 
 | Namespace | Owner package | Status |
 |---|---|---|
-| `revit:` | `RvtIO.Scene` | planned; the formats below are fixed with the first release of the package |
-| `ifc:` | `IfcIO.Scene` | planned; the formats below are fixed with the first release of the package |
+| `revit:` | `RvtIO.Scene` | registered; the formats below are fixed from the first release of the package, 0.4.0 |
+| `ifc:` | `IfcIO.Scene` | registered; the formats below are fixed from the first release of the package, 0.11.0 |
 
 No other namespace is registered. Producers for NWC, DWG and other formats register theirs when they are written.
 
@@ -41,7 +42,8 @@ No other namespace is registered. Producers for NWC, DWG and other formats regis
 | `revit:type` | property set | The type parameters of an element; one set shared by every element of the type. |
 | `revit:bip:<id>` | property | A built-in parameter, by its numeric id, which is negative: `revit:bip:-1001107`. |
 
-Keys for shared, project and family parameters are registered with the first release of `RvtIO.Scene`.
+Shared, project and family parameters have no key yet. Their formats (for example `revit:shared:<guid>`) are
+registered when `RvtIO.Scene` first writes them; that is an addition.
 
 ### `ifc:`
 
@@ -60,8 +62,8 @@ occurrence sets.
 
 | Value | Source | Producer |
 |---|---|---|
-| `rvt` | Revit project | `RvtIO.Scene` (planned) |
-| `ifc` | IFC STEP file, also zipped (`.ifczip`) | `IfcIO.Scene` (planned) |
+| `rvt` | Revit project | `RvtIO.Scene` |
+| `ifc` | IFC STEP file, also zipped (`.ifczip`) | `IfcIO.Scene` |
 | `nwc` | Navisworks cache | `NwcIO.Scene` (later) |
 | `dwg` | DWG drawing | `DwgIO.Scene` (later) |
 | `glb` | binary glTF | `IOScene.Formats` (later) |

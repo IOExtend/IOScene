@@ -154,6 +154,44 @@ public class SceneJsonTests
     }
 
     [Fact]
+    public void A_date_time_is_written_with_its_offset_and_read_without_one_in_the_local_time_zone()
+    {
+        var start = new DateTimeOffset(2026, 1, 2, 3, 4, 5, TimeSpan.FromHours(3));
+        var doc = new SceneDocument { Schedules = { new SceneSchedule { Tasks = { new SceneTask { Id = "t", PlannedStart = start } } } } };
+        string json = SceneJson.Write(doc);
+        Assert.Contains("\"PlannedStart\":\"2026-01-02T03:04:05+03:00\"", json);
+        Assert.True(start.EqualsExact(SceneJson.Read(json).Schedules[0].Tasks[0].PlannedStart));
+
+        DateTimeOffset Read(string value) => SceneJson.Read(Head + ",\"Schedules\":[{\"Tasks\":[{\"PlannedStart\":\"" + value + "\"}]}]}").Schedules[0].Tasks[0].PlannedStart;
+        Assert.True(new DateTimeOffset(2026, 1, 2, 0, 4, 5, TimeSpan.Zero).EqualsExact(Read("2026-01-02T00:04:05Z")));
+        Assert.True(new DateTimeOffset(new DateTime(2026, 1, 2, 3, 4, 5, DateTimeKind.Local)).EqualsExact(Read("2026-01-02T03:04:05")));
+    }
+
+    [Fact]
+    public void JSON_nests_at_most_128_levels_which_holds_62_levels_of_tasks()
+    {
+        static SceneDocument Tasks(int levels)
+        {
+            var top = new SceneTask { Id = "1" };
+            var at = top;
+            for (int level = 2; level <= levels; level++)
+            {
+                at.Children.Add(new SceneTask { Id = "t" });
+                at = at.Children[0];
+            }
+            return new SceneDocument { Schedules = { new SceneSchedule { Tasks = { top } } } };
+        }
+
+        string json = SceneJson.Write(Tasks(62));
+        Assert.Equal(json, SceneJson.Write(SceneJson.Read(json)));
+        Assert.Throws<JsonException>(() => SceneJson.Write(Tasks(63)));
+
+        // The root object and 127 arrays inside it are 128 levels.
+        Assert.Empty(SceneJson.Read(Head + ",\"Later\":" + new string('[', 127) + new string(']', 127) + "}").Models);
+        Assert.Throws<InvalidDataException>(() => SceneJson.Read(Head + ",\"Later\":" + new string('[', 128) + new string(']', 128) + "}"));
+    }
+
+    [Fact]
     public void Unknown_members_and_unknown_enum_numbers_survive_a_round_trip_as_numbers()
     {
         var doc = SceneJson.Read(Head + ",\"Later\":[{\"A\":1}],\"Elements\":[{\"Id\":1,\"Kind\":9,\"Later\":true}],"

@@ -56,7 +56,7 @@ SceneModel            // one source file, or one placement of a linked file
   int Id; string Key (unique in the scene, frozen derivation); string Name; string? Path
   string? SourceFormat ("rvt", "ifc", ...); string? Application, Author, CreatedAt
   string? SourceLengthUnit            // information only
-  string? Producer                    // "RvtIO.Scene 0.5.0"
+  string? Producer                    // "RvtIO.Scene 0.5.0": package id, one space, version
 
 SceneElement
   long Id; int ModelId; string? SourceId; string? IfcGuid; long? ParentId; SceneNodeKind Kind
@@ -110,7 +110,7 @@ the right member. Each takes the display string; the library never invents one.
 
 | Topic | Decision |
 |---|---|
-| Meshes | Indexed or non-indexed triangles in `SceneGeometry`, optional normals and UVs. |
+| Meshes | Indexed or non-indexed triangles in `SceneGeometry`, optional normals and UVs. A triangle's front is the side from which its vertices run counter-clockwise; normals, when given, point to the front. An instance transform with a negative determinant (a mirror) reverses the winding. This is the glTF rule. |
 | Shared geometry and transforms | **One path only**: `SceneInstance` -> `SceneGeometry` with an affine `Transform3d` (mirror and non-uniform scale allowed; null is the identity). A unique mesh is a geometry used once. One level; producers flatten nested blocks, hotlinks and assemblies. |
 | Lines, points | `Topology` on the geometry, so line work shares instancing (DWG blocks). A consumer that draws only triangles skips the rest and reports it. |
 | Sub-range of a geometry per instance (`IndexStart`, `IndexCount`) | **Never.** It cannot be added later without a break, and it is not needed: measured on 438 real DWG drawings, batching keeps them far under the limits. |
@@ -131,16 +131,16 @@ the right member. Each takes the display string; the library never invents one.
 | Property values | Typed. `Text` is always the display string as the source shows it. `Number` is in coherent SI when `Unit` is set. `Integer` is a separate `long` and also carries `Boolean` as 0/1. A producer that cannot type a value writes `Kind = Text`; values are never guessed from strings. `Validate()` reports a kind without its payload. |
 | Units | `Unit` follows one ASCII grammar ([section 9](#9-units)). `Validate()` warns on anything else. **When `Number` is present, `Unit` is authoritative and null means dimensionless.** A producer that cannot convert a dimensioned value writes `Kind = Text` with the number only in `Text`. |
 | Property keys | `Key` on set and property is opaque to the scene and qualified by the producer (`revit:bip:-1001107`, `ifc:Pset_WallCommon.IsExternal`). **Registry:** [keys.md](keys.md) lists each namespace, its owner package and the key format, and the `SourceFormat` values. A registered key format changes only with a breaking release of its producer. Saved searches, clash rules and writers of other formats address keys; a viewer shows names. |
-| Property lookup | A key may appear in several property sets of one element. A lookup by key takes the first set in `SceneElement.PropertySetIds` that has it. Producers list occurrence (instance) sets before type sets. |
+| Property lookup | A key may appear in several property sets of one element. A lookup by key takes the first set in `SceneElement.PropertySetIds` that has it, and the first property of that set with the key. Producers list occurrence (instance) sets before type sets. |
 | Property sharing | Sets live in a document table and elements reference them by id. A geometry-free scene file and a property-free one are both valid documents, so a split export needs no property database; a join key (`SceneDocument.ExportId`) is additive when that is built. |
 | Materials | Name, RGBA, roughness, metalness, optional texture by id. Opacity is stored once (alpha), with one optional colour per instance. |
-| Colour | The RGB channels of `RgbaColor` are sRGB-encoded. Alpha is straight (not premultiplied) linear coverage. When a material has a texture, the colour multiplies it (glTF `baseColorFactor`), so a producer that means the plain texture writes white. |
+| Colour | The RGB channels of `RgbaColor` are sRGB-encoded. Alpha is straight (not premultiplied) linear coverage. When a material has a texture, the colour multiplies it (glTF `baseColorFactor`), so a producer that means the plain texture writes white. An instance colour replaces the material colour, also as the factor of the material's texture. |
 | Texture coordinates | `v = 0` is the bottom row of the image. The texture is sampled at `(u / ScaleX, v / ScaleY)` with repeat wrapping. Texture offset and rotation are baked into the UVs; they never become members. |
 | Coordinate frame, georeference | Not in 0.1.0. `SceneModel.Frame`, `ToShared` and a geo reference are additive members. They are a precondition of any consumer that tests two models against each other. |
 | Links, federation | The `Models` table plus `ModelId` on elements, levels, grids and schedules. `Models[0]` is the model of the file the producer was given; the others are its links or files federated with it. A merge helper that renumbers ids is added with the first federation consumer. No nested scenes. |
 | Grids | `SceneGridLine.Elevation` is the Z, in scene coordinates, of the level the line is drawn on. `Start` and `End` are authoritative for drawing. |
 | Viewpoints | In the scene: optional `Id` (a saved-viewpoint GUID or a BCF viewpoint GUID), name, camera. For an orthographic camera the visible height is `2 * |Target - Position| * tan(FieldOfView / 2)`. Clip planes and visibility lists are additive. |
-| 4D | `SceneSchedule` in the scene. `SceneTask.Progress` is a fraction from 0 to 1. |
+| 4D | `SceneSchedule` in the scene. `SceneTask.Progress` is a fraction from 0 to 1. A `PlannedStart` or `PlannedEnd` at its default `0001-01-01T00:00:00+00:00` means "not given": a consumer leaves such a task out of time-based views. |
 | Clash results | `SceneClashTest`, `SceneClashResult` and `SceneClashStatus` in the scene: results only. Rules, tolerances, the engine and the store of statuses across runs belong to the coordination tool. Further fields of a source (assignee, comments, dates) are additive. `Distance` is in metres: below 0 it is the penetration depth, from 0 up it is the clearance (the Navisworks convention). Null means the source did not report it. |
 | Conversion report | Each producer returns its own result object with `Document` and `Diagnostics`, by convention. There is no base class and no interface in 0.1.0. |
 
@@ -201,7 +201,8 @@ consumer shows, filters, measures or tests it. From then on:
 - the member is authoritative;
 - producers keep writing the old key until the next breaking `IOScene` minor;
 - consumers read the member and fall back to the key through one helper that ships in `IOScene` with the member;
-- `SceneModel.Producer` tells "absent in the source" from "the producer is older than the member".
+- `SceneModel.Producer` tells "absent in the source" from "the producer is older than the member". It is the
+  package id and the NuGet version without build metadata, separated by one space: `RvtIO.Scene 0.5.0`.
 
 Promotion is therefore additive by definition. It is the only allowed case of two ways to say one thing, and it ends
 at the next breaking minor.
@@ -218,7 +219,10 @@ They make the open enums and the open ends of the model safe:
 - treat an unknown `SceneProjection` as `Perspective`;
 - treat a `Unit` you cannot parse as unknown: show `Text` and do not compare `Number`;
 - expect large vertex coordinates: rebase (for example on `ComputeBounds().Center`) before narrowing to 32-bit floats;
-- look a property up by key in the first set of `SceneElement.PropertySetIds` that has it.
+- look a property up by key in the first set of `SceneElement.PropertySetIds` that has it, and take the first
+  property of that set with the key;
+- leave a task whose `PlannedStart` or `PlannedEnd` is the default `0001-01-01T00:00:00+00:00` out of time-based
+  views.
 
 The reader keeps enum numbers it does not know, and writes them back.
 
@@ -278,6 +282,9 @@ the range `[0.N.0, 0.N+1.0-0)`; the `-0` keeps out the previews of the next brea
   conveniences; a .NET string caps a document at about a billion characters.
 - Textures are `byte[]` in the model and base64 in the file.
 - The writer emits tables in dependency order: models, materials, textures, property sets, levels, geometries,
+- Date-times (the dates of a task) are ISO 8601 text with an offset, such as `2026-03-01T08:00:00+00:00`; `SceneJson`
+  always writes the offset and also reads `Z` for UTC. It reads a value without an offset in the local time zone of
+  the machine, so a file always gives the offset.
   elements with parents first, instances, then grids, viewpoints, schedules and clash tests. Readers must not rely on
   it.
 - Reader rules: unknown members are ignored; a missing optional member takes its default
@@ -292,7 +299,9 @@ the range `[0.N.0, 0.N+1.0-0)`; the `-0` keeps out the previews of the next brea
   value, and a reader holds one value in one buffer. `SceneJson.Write` refuses a larger geometry with
   `ArgumentException` before it writes anything; a producer splits the mesh. A schedule nests tasks at most 30
   levels deep, which keeps a file within 64 levels of JSON nesting, the default limit of common readers;
-  `Validate()` reports a deeper tree as `task-depth`.
+  `Validate()` reports a deeper tree as `task-depth`. `SceneJson` writes and reads JSON nested at most 128 levels
+  deep (the root object is the first), which holds 62 levels of tasks: `Write` throws `JsonException` for a deeper
+  schedule, and `Read` rejects a deeper file with `InvalidDataException`.
 - `Format` counts file encodings of kind `ioscene`. It is bumped by a breaking model change and may also be bumped by a
   new encoding in an additive release. Golden files of every released `Format` are committed in
   `tests/golden/format-N` and read by every later version in tests.
@@ -310,7 +319,7 @@ one is a breaking change.
 | any other text (`Title`, `Key`, `Name`, `Category`, `TypeName`, `Id` of a task or clash, `Element1Name`, `Element2Name`, `SceneValue.Text`) | empty string, except the three names below |
 | any other id or number (`Id`, `ModelId`, `ElementId`, `GeometryId`, `Elevation` of a grid line, `Progress`), `Vector3d` (`Start`, `End`, `Point`, `Target`) | 0 |
 | any enum, except `SceneClashResult.Status` | its value 0 (`Element`, `Triangles`, `Text`, `Perspective`, `Construct`) |
-| `SceneTask.PlannedStart`, `PlannedEnd` | `0001-01-01T00:00:00+00:00` |
+| `SceneTask.PlannedStart`, `PlannedEnd` | `0001-01-01T00:00:00+00:00`, which means "not given" ([4D](#3-decisions-by-topic)) |
 | `SceneMaterial.Color` | `[200,200,200,255]` |
 | `SceneMaterial.Roughness`, `Metalness` | 0.5, 0.1 |
 | `SceneTexture.MimeType` | `image/png` |
