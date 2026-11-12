@@ -17,7 +17,7 @@ section 5). A package that depends on IOScene references `[0.1.0, 0.2.0-0)`.
   `--prerelease`.
 - `docs/contract.md` and the XML documentation state these rules; the code is unchanged:
   - An explicit `null` reads as the default for text other than `Kind`, lists, objects and members marked `?`.
-    `SceneJson.Read` rejects a `null` for a number, an id, an enum, a math value, a date-time or a property value
+    `SceneJson.Read` rejects a `null` for a number, an enum, a math value, a date-time or a property value
     with `InvalidDataException`.
   - `Validate()` does not check `vertex-count` and `index-count` for a topology it does not know; `index-range`,
     `normal-count` and `uv-count` apply to every topology.
@@ -30,8 +30,8 @@ section 5). A package that depends on IOScene references `[0.1.0, 0.2.0-0)`.
   - An instance colour replaces the material colour, also as the factor of the material's texture.
   - A lookup by key takes the first property with the key in the first set that has it.
   - `SceneJson` writes and reads JSON nested at most 128 levels deep, which holds 62 levels of tasks.
-- `docs/keys.md`: the namespaces `revit:` and `ifc:` are registered with the first releases of `RvtIO.Scene` and
-  `IfcIO.Scene`. Shared, project and family parameters have no key yet.
+- `docs/keys.md`: the namespaces `revit:` and `ifc:` are registered; their formats are fixed from the first releases
+  of `RvtIO.Scene` and `IfcIO.Scene`. Shared, project and family parameters have no key yet.
 - The package has its own icon instead of a copy of the IOViewer icon.
 
 ## [0.1.0-preview.2] - 2026-11-12

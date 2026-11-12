@@ -244,9 +244,9 @@ The reader keeps enum numbers it does not know, and writes them back.
 
 ### Versions
 
-In 0.x a patch release is additive and a minor release is breaking. A package that depends on `IOScene` 0.N references
-the range `[0.N.0, 0.N+1.0-0)`; the `-0` keeps out the previews of the next breaking line. From 1.0 the range is
-`[1.M.0, 2.0.0-0)`.
+In 0.x a patch release is additive or fixes a defect, and a minor release is breaking. A package that depends on
+`IOScene` 0.N references the range `[0.N.0, 0.N+1.0-0)`; the `-0` keeps out the previews of the next breaking line.
+From 1.0 the range is `[1.M.0, 2.0.0-0)`.
 
 ## 6. Names
 
