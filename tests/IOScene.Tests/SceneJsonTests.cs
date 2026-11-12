@@ -71,7 +71,9 @@ public class SceneJsonTests
     public void The_defaults_of_format_1_are_the_ones_the_contract_lists()
     {
         // One object of every type with no member at all. The defaults are part of format 1 (docs/contract.md,
-        // "Required members and defaults"): a change here is a breaking change, not a fix of the expected text.
+        // "Required members and defaults"): a changed value here is a breaking change, not a fix of the expected
+        // text. A new member that shows up here is written while it is null or empty, which the test
+        // A_document_with_nothing_in_it_writes_the_lists_of_format_1_and_no_other explains.
         var doc = SceneJson.Read(Head + ",\"Models\":[{}],\"Materials\":[{}],\"Textures\":[{}],\"PropertySets\":[{\"Properties\":[{}]}],\"Levels\":[{}],"
             + "\"Geometries\":[{}],\"Elements\":[{}],\"Instances\":[{}],\"Grids\":[{\"Lines\":[{}]}],\"Viewpoints\":[{}],"
             + "\"Schedules\":[{\"Tasks\":[{}]}],\"ClashTests\":[{\"Clashes\":[{}]}]}");
