@@ -2,7 +2,8 @@
 
 ## Supported versions
 
-IOScene is in preview (0.x). Security fixes are made on the latest release only.
+IOScene is at 0.x: a patch release only adds, and a minor release may break. Security fixes are made on the latest
+release only.
 
 ## Reporting a vulnerability
 

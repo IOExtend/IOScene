@@ -123,7 +123,7 @@ Write commit messages in the imperative mood, for example,
 
 ## Releases
 
-Push a tag matching the package version, such as `v0.1.0` or `v0.1.0-preview.1`, to run `release.yml`.
+Push a tag matching the package version, such as `v0.1.1` or `v0.2.0-preview.1`, to run `release.yml`.
 The workflow builds and tests the solution, publishes the NuGet package through Trusted Publishing and then attaches
 the package, symbols, binaries, source and checksums to a GitHub release, which is marked as a prerelease when the tag
 contains a hyphen. The release notes are the section of `CHANGELOG.md` for the version: in the release commit, rename

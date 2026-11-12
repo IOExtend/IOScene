@@ -4,7 +4,8 @@ This is the specification of the scene model in the `IOScene` package and of its
 format 1). Producers (adapters that turn an engine's model into a scene) and consumers (viewers, coordination tools,
 writers of other formats) are written against this text. The API reference is the XML documentation in the package.
 
-Status: **preview**. Until `IOScene` 0.1.0 is released, names and members may still change.
+Status: **stable** from `IOScene` 0.1.0. The contract changes only as [section 5](#5-how-the-contract-changes)
+describes.
 
 Contents: [purpose and invariants](#1-purpose-and-invariants), [types](#2-types), [decisions by topic](#3-decisions-by-topic),
 [what is not in the scene](#4-what-is-not-in-the-scene), [how the contract changes](#5-how-the-contract-changes),
@@ -281,10 +282,10 @@ the range `[0.N.0, 0.N+1.0-0)`; the `-0` keeps out the previews of the next brea
 - **`Stream` is the primary API** (`Write(doc, Stream)`, `Read(Stream)`). The `string` overloads stay as
   conveniences; a .NET string caps a document at about a billion characters.
 - Textures are `byte[]` in the model and base64 in the file.
-- The writer emits tables in dependency order: models, materials, textures, property sets, levels, geometries,
 - Date-times (the dates of a task) are ISO 8601 text with an offset, such as `2026-03-01T08:00:00+00:00`; `SceneJson`
   always writes the offset and also reads `Z` for UTC. It reads a value without an offset in the local time zone of
   the machine, so a file always gives the offset.
+- The writer emits tables in dependency order: models, materials, textures, property sets, levels, geometries,
   elements with parents first, instances, then grids, viewpoints, schedules and clash tests. Readers must not rely on
   it.
 - Reader rules: unknown members are ignored; a missing optional member takes its default
