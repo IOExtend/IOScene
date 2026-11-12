@@ -139,16 +139,21 @@ public class SceneJsonTests
     {
         var doc = SceneJson.Read(Head + ",\"Later\":[{\"A\":1}],\"Elements\":[{\"Id\":1,\"Kind\":9,\"Later\":true}],"
             + "\"PropertySets\":[{\"Id\":1,\"Properties\":[{\"Name\":\"P\",\"Value\":{\"Kind\":8,\"Text\":\"shown\",\"Later\":1}}]}],"
-            + "\"ClashTests\":[{\"Clashes\":[{\"Id\":\"c\",\"Status\":12}]}]}");
+            + "\"ClashTests\":[{\"Clashes\":[{\"Id\":\"c\",\"Status\":12}]}],"
+            + "\"Viewpoints\":[{\"Camera\":{\"Projection\":4}}],\"Schedules\":[{\"Tasks\":[{\"Id\":\"t\",\"TaskType\":5}]}]}");
 
         Assert.Equal(9, (int)doc.Elements[0].Kind);
         Assert.Equal(8, (int)doc.PropertySets[0].Properties[0].Value.Kind);
         Assert.Equal("shown", doc.PropertySets[0].Properties[0].Value.Text);
         Assert.Equal(12, (int)doc.ClashTests[0].Clashes[0].Status);
+        Assert.Equal(4, (int)doc.Viewpoints[0].Camera.Projection);
+        Assert.Equal(5, (int)doc.Schedules[0].Tasks[0].TaskType);
 
         string json = SceneJson.Write(doc);
         Assert.Contains("\"Kind\":9", json);
         Assert.Contains("\"Status\":12", json);
+        Assert.Contains("\"Projection\":4", json);
+        Assert.Contains("\"TaskType\":5", json);
         Assert.DoesNotContain("Later", json);
     }
 
