@@ -23,3 +23,17 @@ First preview of the scene contract. Names and members may still change before 0
   scene.
 - Math types `Vector2d`, `Vector3d`, `BoundingBox3d`, `Transform3d` and `RgbaColor`.
 - `docs/contract.md` (the specification) and `docs/keys.md` (the registry of property key namespaces).
+
+### Changed since 0.1.0-preview.1
+- `SceneClashResult.Distance` is `double?`: null means not reported, below 0 is the penetration depth and from 0 up
+  the clearance, in metres. A missing `Distance` in a file reads as null.
+- `Validate()` reports `id-range` for an element id outside `-(2^53 - 1)` to `2^53 - 1`, also where an element,
+  instance, schedule task or clash names one, and checks a clash distance only when it is there.
+- `SceneTaskType` and `SceneProjection` are open enums: a consumer treats an unknown value as `Construct` and as
+  `Perspective`.
+- The contract fixes colour (sRGB, straight alpha, colour times texture), texture coordinates, `Models[0]`, `ParentId`
+  by `Kind`, the property lookup by key, the meaning of a null `Unit`, `SceneTask.Progress` from 0 to 1, grid line
+  elevation and the frozen `IfcGuid` derivation. A per-instance index range is never added. Large vertex coordinates
+  are allowed; a consumer rebases them before it narrows them to 32-bit floats.
+- `docs/keys.md`: keys are compared whole and never parsed back, a lookup by key takes the first set, and
+  `SourceFormat` is the id of the content format (`ifc` covers `.ifc` and `.ifczip`).

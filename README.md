@@ -42,7 +42,7 @@ line:
 <PackageReference Include="IOScene" Version="[0.1.0, 0.2.0-0)" />
 ```
 
-During the preview the lower bound is the preview: `[0.1.0-preview.1, 0.2.0-0)`. `dotnet pack` reports NU5104 for a
+During the preview the lower bound is the preview: `[0.1.0-preview.2, 0.2.0-0)`. `dotnet pack` reports NU5104 for a
 stable package with such a range; add `<NoWarn>$(NoWarn);NU5104</NoWarn>` to the referencing project.
 
 ## Quick start
