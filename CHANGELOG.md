@@ -21,8 +21,9 @@ First published preview of the scene contract. Names and members may still chang
 - `SceneDocument.Validate()` with stable diagnostic codes, `ComputeBounds()` and the `AddMesh` quick-start helper.
 - `SceneJson`: scene JSON of kind `ioscene`, format 1, with stream and file methods. Math values are number arrays,
   vertex lists are flat, textures are base64. Files of another kind or of a newer format are rejected; unknown
-  members are ignored. `SceneJson.CreateOptions()` gives the same rules to a document of another kind that holds a
-  scene.
+  members are ignored. `SceneJson.CreateOptions()` gives the serializer rules of scene JSON to a document of another
+  kind that holds a scene; the parents-first order of elements and the geometry size check of `Write` are not part
+  of them.
 - Math types `Vector2d`, `Vector3d`, `BoundingBox3d`, `Transform3d` and `RgbaColor`.
 - `docs/contract.md` (the specification) and `docs/keys.md` (the registry of property key namespaces).
 

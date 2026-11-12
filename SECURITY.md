@@ -20,7 +20,8 @@ IOScene reads scene JSON files that can come from untrusted sources. Problems th
 
 - crashes, hangs or unbounded memory use caused by a crafted scene file, in `SceneJson` or in `Validate()`;
 - any behaviour of the library that executes code, contacts the network or writes outside the path it was given
-  (the library does none of these; it writes only the file passed to `SceneJson.Save`).
+  (the library does none of these; it writes only the file passed to `SceneJson.Save`, through a temporary file next
+  to it that it then moves over that file).
 
 The reader does not validate a scene. A consumer that takes files from untrusted sources calls `Validate()` and
 checks the ids it follows.

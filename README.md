@@ -67,7 +67,7 @@ SceneJson.Save(scene, "quad.json");
 
 `AddMesh` creates the model, the geometry, the element and the instance that links them. A reader of a real format
 fills the same lists directly: `Models`, `Geometries`, `Elements`, `Instances`, `PropertySets` and the rest.
-`SceneJson.Load` and `SceneJson.Read` bring the file back; `SceneJson.Write` and `Read` work on streams.
+`SceneJson.Load` brings the file back. `SceneJson.Write` and `SceneJson.Read` work on streams and on JSON text.
 
 ## Documentation
 
