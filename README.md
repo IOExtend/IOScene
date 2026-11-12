@@ -1,6 +1,4 @@
-<p align="center">
-  <img src="https://raw.githubusercontent.com/IOExtend/IOScene/main/docs/images/ioscene-banner.png" alt="IOScene" width="640">
-</p>
+![IOScene](https://raw.githubusercontent.com/IOExtend/IOScene/main/docs/images/ioscene-banner.png)
 
 # IOScene
 
