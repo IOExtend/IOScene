@@ -41,8 +41,9 @@ public sealed class SceneModel
     public string? SourceLengthUnit { get; set; }
 
     /// <summary>
-    /// Package and version that produced the model, such as <c>RvtIO.Scene 0.5.0</c>. It tells "absent in the
-    /// source" from "the producer is older than the member".
+    /// Package and version that produced the model: the package id and the NuGet version without build metadata,
+    /// separated by one space, such as <c>RvtIO.Scene 0.5.0</c>. It tells "absent in the source" from "the producer
+    /// is older than the member".
     /// </summary>
     public string? Producer { get; set; }
 }

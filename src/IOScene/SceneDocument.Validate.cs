@@ -107,7 +107,7 @@ public sealed partial class SceneDocument
         }
         foreach (var g in Geometries)
         {
-            // An unknown topology of a later version is not checked for counts.
+            // An unknown topology of a later version is not checked for vertex-count and index-count.
             int per = g.Topology switch { SceneTopology.Triangles => 3, SceneTopology.Lines => 2, _ => 1 };
             if (g.Indices.Count == 0 && g.Vertices.Count % per != 0) Error("vertex-count", $"Non-indexed geometry {g.Id} has {g.Vertices.Count} vertices for topology {g.Topology}.");
             if (g.Indices.Count % per != 0) Error("index-count", $"Geometry {g.Id} has {g.Indices.Count} indices for topology {g.Topology}.");

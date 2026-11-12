@@ -6,6 +6,34 @@ and the project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## [Unreleased]
 
+## [0.1.0] - 2026-11-13
+
+First stable release. The API, the file format (kind `ioscene`, format 1) and the validation codes are those of
+0.1.0-preview.2. From this release a patch adds or fixes; a breaking change waits for 0.2.0 (`docs/contract.md`,
+section 5). A package that depends on IOScene references `[0.1.0, 0.2.0-0)`.
+
+### Changed
+- README, `docs/contract.md` and SECURITY.md describe a stable package, and the install command has no
+  `--prerelease`.
+- `docs/contract.md` and the XML documentation state these rules; the code is unchanged:
+  - An explicit `null` reads as the default for text other than `Kind`, lists, objects and members marked `?`.
+    `SceneJson.Read` rejects a `null` for a number, an enum, a math value, a date-time or a property value
+    with `InvalidDataException`.
+  - `Validate()` does not check `vertex-count` and `index-count` for a topology it does not know; `index-range`,
+    `normal-count` and `uv-count` apply to every topology.
+  - A triangle's front is the side from which its vertices run counter-clockwise, and normals point to the front. An
+    instance transform with a negative determinant reverses the winding (the glTF rule).
+  - A `PlannedStart` or `PlannedEnd` at its default `0001-01-01T00:00:00+00:00` means "not given"; a consumer leaves
+    such a task out of time-based views.
+  - Date-times are written with an offset; a value without one is read in the local time zone.
+  - `SceneModel.Producer` is the package id and the NuGet version without build metadata, separated by one space.
+  - An instance colour replaces the material colour, also as the factor of the material's texture.
+  - A lookup by key takes the first property with the key in the first set that has it.
+  - `SceneJson` writes and reads JSON nested at most 128 levels deep, which holds 62 levels of tasks.
+- `docs/keys.md`: the namespaces `revit:` and `ifc:` are registered; their formats are fixed from the first releases
+  of `RvtIO.Scene` and `IfcIO.Scene`. Shared, project and family parameters have no key yet.
+- The package has its own icon instead of a copy of the IOViewer icon.
+
 ## [0.1.0-preview.2] - 2026-11-12
 
 First published preview of the scene contract. Names and members may still change before 0.1.0.

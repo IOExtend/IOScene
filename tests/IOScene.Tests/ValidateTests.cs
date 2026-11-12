@@ -179,6 +179,18 @@ public class ValidateTests
     }
 
     [Fact]
+    public void A_topology_of_a_later_version_is_still_checked_for_index_range_normal_count_and_uv_count()
+    {
+        // Four indices are not checked for the topology; they still point into the vertices, and normals and texture
+        // coordinates are still one per vertex.
+        var doc = With(d => d.Geometries.Add(new SceneGeometry
+        {
+            Id = 9, Topology = (SceneTopology)7, Vertices = [new(0, 0, 0), new(1, 0, 0)], Indices = [0, 1, 5, 1], Normals = [Vector3d.UnitZ], UVs = [Vector2d.Zero],
+        }));
+        Assert.Equal(new[] { "index-range", "normal-count", "uv-count" }, Codes(doc));
+    }
+
+    [Fact]
     public void Index_count() => Assert.Equal(new[] { "index-count" }, Codes(With(d => d.Geometries[0].Indices = [0, 1, 2, 3])));
 
     [Theory]

@@ -1,5 +1,9 @@
+![IOScene](https://raw.githubusercontent.com/IOExtend/IOScene/main/docs/images/ioscene-banner.png)
+
 # IOScene
 
+[![NuGet](https://img.shields.io/nuget/v/IOScene?style=flat-square&color=10B981&logo=nuget)](https://www.nuget.org/packages/IOScene)
+[![Release](https://img.shields.io/github/v/release/IOExtend/IOScene?style=flat-square&color=10B981)](https://github.com/IOExtend/IOScene/releases)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg?style=flat-square)](https://opensource.org/licenses/MIT)
 [![Platform](https://img.shields.io/badge/.NET-8.0%20%7C%2010.0-512BD4?style=flat-square&logo=dotnet)](https://dotnet.microsoft.com/)
 
@@ -10,8 +14,9 @@ it from there. The package is pure managed .NET (8 and 10) and has no dependenci
 
 Built clean-room under the [IOExtend](https://github.com/IOExtend) organization.
 
-**Status: preview.** The model is specified in [docs/contract.md][contract]; names and members may still change
-before 0.1.0.
+**Status: stable (0.1).** The model is specified in [docs/contract.md][contract] and changes only as its section 5
+describes: a 0.1.x patch adds or fixes, and a breaking change waits for 0.2.0. Packages outside IOExtend are
+supported from IOScene 1.0; until then the supported route is a scene file.
 
 ## What is in a scene
 
@@ -31,7 +36,7 @@ from a scene.
 ## Install
 
 ```sh
-dotnet add package IOScene --prerelease
+dotnet add package IOScene
 ```
 
 A package that depends on IOScene references one 0.x line, because a 0.x minor release may break the API and a patch
@@ -42,8 +47,8 @@ line:
 <PackageReference Include="IOScene" Version="[0.1.0, 0.2.0-0)" />
 ```
 
-During the preview the lower bound is the preview: `[0.1.0-preview.2, 0.2.0-0)`. `dotnet pack` reports NU5104 for a
-stable package with such a range; add `<NoWarn>$(NoWarn);NU5104</NoWarn>` to the referencing project.
+`dotnet pack` of a stable package reports NU5104 for this range, because its upper bound `0.2.0-0` is a prerelease
+version; add `<NoWarn>$(NoWarn);NU5104</NoWarn>` to the referencing project.
 
 ## Quick start
 

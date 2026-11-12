@@ -23,6 +23,10 @@ public enum SceneTopology
 /// should put large offsets into the instance transform, but vertex coordinates may be large: a consumer rebases them
 /// (for example on the centre of <see cref="SceneDocument.ComputeBounds"/>) before it narrows them to 32-bit floats.
 /// </summary>
+/// <remarks>
+/// A triangle's front is the side from which its vertices run counter-clockwise; <see cref="Normals"/>, when given,
+/// point to the front. An instance transform with a negative determinant reverses the winding. This is the glTF rule.
+/// </remarks>
 public sealed class SceneGeometry
 {
     /// <summary>Scene-local id, referenced by <see cref="SceneInstance.GeometryId"/>.</summary>
@@ -66,13 +70,19 @@ public sealed class SceneInstance
     /// <summary>Id of the placed <see cref="SceneGeometry"/>.</summary>
     public int GeometryId { get; set; }
 
-    /// <summary>Affine transform from local to scene coordinates, mirror included; null is the identity.</summary>
+    /// <summary>
+    /// Affine transform from local to scene coordinates, mirror included; null is the identity. A transform with a
+    /// negative determinant (a mirror) reverses the winding of the triangles.
+    /// </summary>
     public Transform3d? Transform { get; set; }
 
     /// <summary>Id of the <see cref="SceneMaterial"/>, or null.</summary>
     public int? MaterialId { get; set; }
 
-    /// <summary>Colour that overrides the material colour, or null. Its alpha is the opacity.</summary>
+    /// <summary>
+    /// Colour that replaces the material colour, also as the factor of the material's texture, or null. Its alpha is
+    /// the opacity.
+    /// </summary>
     public RgbaColor? Color { get; set; }
 
     /// <summary>Name of the placement, or null.</summary>

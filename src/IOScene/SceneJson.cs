@@ -40,9 +40,12 @@ public static class SceneJson
     /// <summary>
     /// Creates serializer options that carry the rules of scene JSON, for a document of another kind that holds a
     /// <see cref="SceneDocument"/> as a member. The math values keep their array encoding with any options; these
-    /// options add the rest: null members are omitted, an explicit <c>null</c> is read as a missing member, a
-    /// <c>null</c> inside a list of objects is rejected with <see cref="InvalidDataException"/>, and text is escaped
-    /// as <see cref="Write(SceneDocument, Stream)"/> escapes it.
+    /// options add the rest: null members are omitted; an explicit <c>null</c> is read as a missing member for text
+    /// (except <see cref="SceneDocument.Kind"/>, which rejects it), lists, objects and nullable members, and makes the
+    /// serializer throw <see cref="JsonException"/> for a member of any other type, such as a number, an enum, a math
+    /// value or a date-time; a <c>null</c> inside a list of objects is rejected with
+    /// <see cref="InvalidDataException"/>; and text is escaped as <see cref="Write(SceneDocument, Stream)"/> escapes
+    /// it.
     /// </summary>
     /// <remarks>
     /// The rules apply to every type that is read or written with the options, the holder included. Two things that
@@ -59,7 +62,11 @@ public static class SceneJson
     /// A number in the scene is NaN or infinite, which <see cref="SceneDocument.Validate"/> reports as
     /// <c>not-finite</c>, or a geometry has more than 10,000,000 vertices, the limit of one geometry in scene JSON.
     /// </exception>
-    /// <exception cref="JsonException">A schedule task is inside its own sub-tasks, which <see cref="SceneDocument.Validate"/> reports as <c>task-tree</c>.</exception>
+    /// <exception cref="JsonException">
+    /// A schedule task is inside its own sub-tasks, which <see cref="SceneDocument.Validate"/> reports as
+    /// <c>task-tree</c>, or tasks nest more than 62 levels deep, which needs more than the 128 levels of JSON nesting
+    /// that scene JSON allows. <see cref="SceneDocument.Validate"/> reports more than 30 levels as <c>task-depth</c>.
+    /// </exception>
     public static void Write(SceneDocument document, Stream stream)
     {
         ArgumentNullException.ThrowIfNull(document);
@@ -71,7 +78,7 @@ public static class SceneJson
     /// <param name="document">Scene to write. It is not changed.</param>
     /// <returns>The JSON text.</returns>
     /// <exception cref="ArgumentException">A number in the scene is NaN or infinite, or a geometry has more than 10,000,000 vertices.</exception>
-    /// <exception cref="JsonException">A schedule task is inside its own sub-tasks.</exception>
+    /// <exception cref="JsonException">A schedule task is inside its own sub-tasks, or tasks nest more than 62 levels deep.</exception>
     public static string Write(SceneDocument document)
     {
         ArgumentNullException.ThrowIfNull(document);
@@ -85,7 +92,7 @@ public static class SceneJson
     /// <param name="document">Scene to write. It is not changed.</param>
     /// <param name="path">Path of the file to create or replace.</param>
     /// <exception cref="ArgumentException">A number in the scene is NaN or infinite, or a geometry has more than 10,000,000 vertices.</exception>
-    /// <exception cref="JsonException">A schedule task is inside its own sub-tasks.</exception>
+    /// <exception cref="JsonException">A schedule task is inside its own sub-tasks, or tasks nest more than 62 levels deep.</exception>
     public static void Save(SceneDocument document, string path)
     {
         ArgumentNullException.ThrowIfNull(document);
@@ -150,8 +157,10 @@ public static class SceneJson
         }
     }
 
-    // Reading treats an explicit null like a missing member, so no member typed as non-null comes back null, and
-    // rejects a null inside a list of objects. A nullable member is null by default, so skipping its null changes nothing.
+    // Reading treats an explicit null for a member of a reference type like a missing member, so no member typed as
+    // non-null comes back null, and rejects a null inside a list of objects. A nullable member is null by default, so
+    // skipping its null changes nothing. A null for a value type is left to the serialiser, which reads it into a
+    // nullable member and rejects it for any other.
     private static void Harden(JsonTypeInfo info)
     {
         if (info.Kind != JsonTypeInfoKind.Object) return;
