@@ -4,7 +4,7 @@ All notable changes are documented here. The format follows [Keep a Changelog](h
 and the project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html) with one rule for versions before
 1.0: a patch release is additive, and a minor release may break the API and the file format.
 
-## [0.1.0-preview.1] - not released yet
+## [Unreleased]
 
 First preview of the scene contract. Names and members may still change before 0.1.0.
 
@@ -19,6 +19,7 @@ First preview of the scene contract. Names and members may still change before 0
 - `SceneDocument.Validate()` with stable diagnostic codes, `ComputeBounds()` and the `AddMesh` quick-start helper.
 - `SceneJson`: scene JSON of kind `ioscene`, format 1, with stream and file methods. Math values are number arrays,
   vertex lists are flat, textures are base64. Files of another kind or of a newer format are rejected; unknown
-  members are ignored.
+  members are ignored. `SceneJson.CreateOptions()` gives the same rules to a document of another kind that holds a
+  scene.
 - Math types `Vector2d`, `Vector3d`, `BoundingBox3d`, `Transform3d` and `RgbaColor`.
 - `docs/contract.md` (the specification) and `docs/keys.md` (the registry of property key namespaces).

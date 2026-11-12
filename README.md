@@ -10,8 +10,8 @@ it from there. The package is pure managed .NET (8 and 10) and has no dependenci
 
 Built clean-room under the [IOExtend](https://github.com/IOExtend) organization.
 
-**Status: preview.** The model is specified in [docs/contract.md](docs/contract.md); names and members may still
-change before 0.1.0.
+**Status: preview.** The model is specified in [docs/contract.md][contract]; names and members may still change
+before 0.1.0.
 
 ## What is in a scene
 
@@ -71,11 +71,18 @@ fills the same lists directly: `Models`, `Geometries`, `Elements`, `Instances`, 
 
 ## Documentation
 
-- [docs/contract.md](docs/contract.md): purpose and invariants, every type, the decisions behind them, what is left
-  out, how the contract changes, the file format, the validation codes and the unit grammar.
-- [docs/keys.md](docs/keys.md): the registry of property key namespaces and `SourceFormat` values.
-- [CHANGELOG.md](CHANGELOG.md) and [CONTRIBUTING.md](CONTRIBUTING.md).
+- [docs/contract.md][contract]: purpose and invariants, every type, the decisions behind them, what is left out,
+  how the contract changes, the file format, the validation codes and the unit grammar.
+- [docs/keys.md][keys]: the registry of property key namespaces and `SourceFormat` values.
+- [CHANGELOG.md][changelog], [CONTRIBUTING.md][contributing] and [SECURITY.md][security].
 
 ## License
 
-MIT, see [LICENSE](LICENSE).
+MIT, see [LICENSE][license].
+
+[contract]: https://github.com/IOExtend/IOScene/blob/main/docs/contract.md
+[keys]: https://github.com/IOExtend/IOScene/blob/main/docs/keys.md
+[changelog]: https://github.com/IOExtend/IOScene/blob/main/CHANGELOG.md
+[contributing]: https://github.com/IOExtend/IOScene/blob/main/CONTRIBUTING.md
+[security]: https://github.com/IOExtend/IOScene/blob/main/SECURITY.md
+[license]: https://github.com/IOExtend/IOScene/blob/main/LICENSE

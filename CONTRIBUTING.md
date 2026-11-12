@@ -16,7 +16,7 @@ Do not attach scene files or models if they contain confidential or customer dat
 A minimal description is better than sharing a confidential model.
 
 Report security issues through GitHub private vulnerability reporting in
-the Security tab. Do not open public issues for security vulnerabilities.
+the Security tab, as [SECURITY.md](SECURITY.md) describes. Do not open public issues for security vulnerabilities.
 
 ## Proposing changes
 
@@ -56,6 +56,7 @@ The rules are in section 5 of [docs/contract.md](docs/contract.md). In short:
 **Additive changes** (a patch release in 0.x, a minor release from 1.0):
 
 - a new optional member whose default means "absent", a new class, a new list on `SceneDocument`, a new method;
+  the writer leaves such a member or list out of the file while it is null or empty (see the golden files below);
 - a new value of an open enum (`SceneNodeKind`, `SceneTopology`, `SceneValueKind`, `SceneClashStatus`);
 - a new `init` property on a record, never a new positional parameter;
 - a new file `Format` for the same model.
@@ -78,8 +79,16 @@ Every change to the model comes with:
 - tests, and for a new file `Format` a new folder `tests/golden/format-N`.
 
 **Golden files are never regenerated.** `tests/golden/format-1` holds files written by the first version of format
-1; every later version must read them and write the same bytes. A test that fails there means the change is not
-additive.
+1; every later version must read them and write the same bytes. A test that fails there means one of two things:
+
+- the change is not additive; or
+- a new member or list is written while it is null or empty. A nullable member is left out already. A new list needs
+  one line in the type-info modifier of `SceneJson` that sets `ShouldSerialize` for it, so that it is written only
+  when it has entries. The lists of 0.1.0 stay as they are and are written when empty.
+
+The byte comparison covers the text of the golden files only. Which characters the writer escapes follows the Unicode
+tables of the .NET runtime and is not part of the format, so do not add recently assigned characters to a golden
+scene.
 
 ## Clean-room policy
 
@@ -116,9 +125,10 @@ Write commit messages in the imperative mood, for example,
 Push a tag matching the package version, such as `v0.1.0` or `v0.1.0-preview.1`, to run `release.yml`.
 The workflow builds and tests the solution, publishes the NuGet package through Trusted Publishing and then attaches
 the package, symbols, binaries, source and checksums to a GitHub release, which is marked as a prerelease when the tag
-contains a hyphen. The release notes are the section of `CHANGELOG.md` for the version, so add that section before the
-tag. The NuGet policy must name this repository, `release.yml`, the configured NuGet profile and the `IOScene*`
-package pattern.
+contains a hyphen. The release notes are the section of `CHANGELOG.md` for the version: in the release commit, rename
+`## [Unreleased]` to `## [<version>] - <date>` (ISO date) and start a new empty `## [Unreleased]` above it. The
+workflow stops before it publishes anything when the tagged commit has no section for the version. The NuGet policy
+must name this repository, `release.yml`, the configured NuGet profile and the `IOScene*` package pattern.
 
 IOScene targets the lowest framework that any package depending on it targets, and drops a framework last.
 
