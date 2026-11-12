@@ -9,7 +9,7 @@ and the project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 ## [0.1.0] - 2026-11-13
 
 First stable release. The API, the file format (kind `ioscene`, format 1) and the validation codes are those of
-0.1.0-preview.2. From this release a patch only adds; every other change waits for 0.2.0 (`docs/contract.md`,
+0.1.0-preview.2. From this release a patch adds or fixes; a breaking change waits for 0.2.0 (`docs/contract.md`,
 section 5). A package that depends on IOScene references `[0.1.0, 0.2.0-0)`.
 
 ### Changed
