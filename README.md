@@ -15,7 +15,7 @@ it from there. The package is pure managed .NET (8 and 10) and has no dependenci
 Built clean-room under the [IOExtend](https://github.com/IOExtend) organization.
 
 **Status: stable (0.1).** The model is specified in [docs/contract.md][contract] and changes only as its section 5
-describes: a 0.1.x patch only adds, and a change to an existing member waits for 0.2.0. Packages outside IOExtend are
+describes: a 0.1.x patch adds or fixes, and a breaking change waits for 0.2.0. Packages outside IOExtend are
 supported from IOScene 1.0; until then the supported route is a scene file.
 
 ## What is in a scene
