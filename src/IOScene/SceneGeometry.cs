@@ -19,8 +19,9 @@ public enum SceneTopology
 }
 
 /// <summary>
-/// Geometry in local coordinates, placed in the scene by one or more <see cref="SceneInstance"/> entries. Large
-/// offsets belong in the instance transform, not in the vertices.
+/// Geometry in local coordinates, placed in the scene by one or more <see cref="SceneInstance"/> entries. Producers
+/// should put large offsets into the instance transform, but vertex coordinates may be large: a consumer rebases them
+/// (for example on the centre of <see cref="SceneDocument.ComputeBounds"/>) before it narrows them to 32-bit floats.
 /// </summary>
 public sealed class SceneGeometry
 {
@@ -44,7 +45,11 @@ public sealed class SceneGeometry
     [JsonConverter(typeof(FlatListConverter<Vector3d, Vector3dNumbers>))]
     public IReadOnlyList<Vector3d>? Normals { get; set; }
 
-    /// <summary>One texture coordinate per vertex, or null.</summary>
+    /// <summary>
+    /// One texture coordinate per vertex, or null. V = 0 is the bottom row of the image; the texture is sampled at
+    /// (U / <see cref="SceneTexture.ScaleX"/>, V / <see cref="SceneTexture.ScaleY"/>) with repeat wrapping. Texture
+    /// offset and rotation are baked into the coordinates.
+    /// </summary>
     [JsonConverter(typeof(FlatListConverter<Vector2d, Vector2dNumbers>))]
     public IReadOnlyList<Vector2d>? UVs { get; set; }
 }

@@ -47,6 +47,9 @@ public sealed class SceneGridLine
     /// <summary>End point in scene coordinates.</summary>
     public Vector3d End { get; set; }
 
-    /// <summary>Elevation of the line in metres.</summary>
+    /// <summary>
+    /// Z in metres, in scene coordinates, of the level the line is drawn on. <see cref="Start"/> and
+    /// <see cref="End"/> are authoritative for drawing.
+    /// </summary>
     public double Elevation { get; set; }
 }

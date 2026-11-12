@@ -1,7 +1,8 @@
 namespace IOScene;
 
 /// <summary>
-/// Projection of a camera.
+/// Projection of a camera. The enum is open: a later version may add values, and a consumer treats a value it does
+/// not know as <see cref="Perspective"/>.
 /// </summary>
 public enum SceneProjection
 {

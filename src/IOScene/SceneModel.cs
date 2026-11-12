@@ -22,7 +22,10 @@ public sealed class SceneModel
     /// <summary>Path of the source file as the producer was given it, or null.</summary>
     public string? Path { get; set; }
 
-    /// <summary>Source format as a lower-case file extension without the dot (<c>rvt</c>, <c>ifc</c>), or null.</summary>
+    /// <summary>
+    /// Registered id of the format of the content, not of the container (<c>rvt</c>; <c>ifc</c> for both
+    /// <c>.ifc</c> and <c>.ifczip</c>), or null. The ids are registered in <c>docs/keys.md</c>.
+    /// </summary>
     public string? SourceFormat { get; set; }
 
     /// <summary>Application that wrote the source file, or null.</summary>

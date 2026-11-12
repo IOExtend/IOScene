@@ -57,7 +57,8 @@ The rules are in section 5 of [docs/contract.md](docs/contract.md). In short:
 
 - a new optional member whose default means "absent", a new class, a new list on `SceneDocument`, a new method;
   the writer leaves such a member or list out of the file while it is null or empty (see the golden files below);
-- a new value of an open enum (`SceneNodeKind`, `SceneTopology`, `SceneValueKind`, `SceneClashStatus`);
+- a new value of an open enum (`SceneNodeKind`, `SceneTopology`, `SceneValueKind`, `SceneClashStatus`,
+  `SceneTaskType`, `SceneProjection`);
 - a new `init` property on a record, never a new positional parameter;
 - a new file `Format` for the same model.
 

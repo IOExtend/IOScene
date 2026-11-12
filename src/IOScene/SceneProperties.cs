@@ -65,16 +65,20 @@ public enum SceneValueKind
 
 /// <summary>
 /// A typed property value. A producer that cannot type a value writes <see cref="SceneValueKind.Text"/>; values are
-/// never guessed from strings.
+/// never guessed from strings. A producer that cannot convert a dimensioned number also writes
+/// <see cref="SceneValueKind.Text"/>, with the number only in <see cref="Text"/>.
 /// </summary>
 /// <remarks>The record grows by <c>init</c> properties only, never by a positional parameter.</remarks>
 /// <param name="Kind">Type of the value.</param>
 /// <param name="Text">Display string, as the source shows the value. It is always set.</param>
-/// <param name="Number">The number for <see cref="SceneValueKind.Number"/>; in coherent SI when <paramref name="Unit"/> is set.</param>
+/// <param name="Number">
+/// The number for <see cref="SceneValueKind.Number"/>; in coherent SI when <paramref name="Unit"/> is set. A consumer
+/// that cannot parse <paramref name="Unit"/> shows <paramref name="Text"/> and does not compare the number.
+/// </param>
 /// <param name="Integer">The number for <see cref="SceneValueKind.Integer"/>, and 0 or 1 for <see cref="SceneValueKind.Boolean"/>.</param>
 /// <param name="Unit">
-/// Unit of <paramref name="Number"/> in the grammar of <see cref="SceneUnits"/>; null when the value is dimensionless
-/// or was not converted.
+/// Unit of <paramref name="Number"/> in the grammar of <see cref="SceneUnits"/>. When <paramref name="Number"/> is
+/// present the unit is authoritative, and null means dimensionless.
 /// </param>
 public readonly record struct SceneValue([property: JsonPropertyOrder(-2)] SceneValueKind Kind, string Text, double? Number = null, long? Integer = null, string? Unit = null)
 {

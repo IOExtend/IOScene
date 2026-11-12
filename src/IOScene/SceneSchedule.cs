@@ -1,7 +1,8 @@
 namespace IOScene;
 
 /// <summary>
-/// What a 4D task does to its elements.
+/// What a 4D task does to its elements. The enum is open: a later version may add values, and a consumer treats a
+/// value it does not know as <see cref="Construct"/>.
 /// </summary>
 public enum SceneTaskType
 {
@@ -47,7 +48,7 @@ public sealed class SceneTask
     /// <summary>Actual cost, or null.</summary>
     public decimal? ActualCost { get; set; }
 
-    /// <summary>Progress of the task, as the source gives it.</summary>
+    /// <summary>Progress of the task as a fraction from 0 to 1.</summary>
     public double Progress { get; set; }
 
     /// <summary>Ids of the elements the task acts on. They are scene-local and valid inside this document only.</summary>

@@ -20,6 +20,9 @@ This file is the registry of the namespaces, of their key formats and of the `Sc
 5. `Key` is optional. A property without a key is still shown; it cannot be addressed by a rule.
 6. When a fact is promoted to a member of the model (the promotion rule of the contract), its key stays registered
    and producers keep writing it until the next breaking `IOScene` minor.
+7. Keys are compared as whole strings (ordinal) and never parsed back.
+8. A key may appear in several property sets of one element. A lookup by key takes the first set in
+   `SceneElement.PropertySetIds` that has it. Producers list occurrence (instance) sets before type sets.
 
 ## Namespaces
 
@@ -47,17 +50,21 @@ Keys for shared, project and family parameters are registered with the first rel
 | `ifc:<SetName>` | property set | A property set or quantity set by its IFC name: `ifc:Pset_WallCommon`. |
 | `ifc:<SetName>.<PropertyName>` | property | A property or quantity of that set by its IFC name: `ifc:Pset_WallCommon.IsExternal`. |
 
+The property sets of an IFC type object, when they are read, use the same `ifc:` key form and come after the
+occurrence sets.
+
 ## `SourceFormat` values
 
-`SceneModel.SourceFormat` is the lower-case file extension of the source, without the dot.
+`SceneModel.SourceFormat` is the registered id of the format of the content, not of the container: `ifc` covers
+`.ifc` and `.ifczip`, and `rvt` covers Revit project files.
 
 | Value | Source | Producer |
 |---|---|---|
 | `rvt` | Revit project | `RvtIO.Scene` (planned) |
-| `ifc` | IFC STEP file | `IfcIO.Scene` (planned) |
+| `ifc` | IFC STEP file, also zipped (`.ifczip`) | `IfcIO.Scene` (planned) |
 | `nwc` | Navisworks cache | `NwcIO.Scene` (later) |
 | `dwg` | DWG drawing | `DwgIO.Scene` (later) |
 | `glb` | binary glTF | `IOScene.Formats` (later) |
 | `obj` | Wavefront OBJ | `IOScene.Formats` (later) |
 
-A producer outside this list uses the extension of its format and adds a row here.
+A producer outside this list registers an id for its format (usually the file extension) and adds a row here.

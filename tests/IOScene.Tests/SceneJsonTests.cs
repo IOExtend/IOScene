@@ -93,8 +93,26 @@ public class SceneJsonTests
             + "\"FieldOfView\":0.785,\"AspectRatio\":1.6,\"NearDistance\":0.1,\"FarDistance\":1000,\"Projection\":0}}],"
             + "\"Schedules\":[{\"Name\":\"\",\"Tasks\":[{\"Id\":\"\",\"Name\":\"\",\"TaskType\":0,"
             + "\"PlannedStart\":\"0001-01-01T00:00:00+00:00\",\"PlannedEnd\":\"0001-01-01T00:00:00+00:00\",\"Progress\":0,\"ElementIds\":[],\"Children\":[]}]}],"
-            + "\"ClashTests\":[{\"Name\":\"Clash Test\",\"Clashes\":[{\"Id\":\"\",\"Name\":\"\",\"Element1Name\":\"\",\"Element2Name\":\"\",\"Point\":[0,0,0],\"Distance\":0,\"Status\":1}]}]}",
+            + "\"ClashTests\":[{\"Name\":\"Clash Test\",\"Clashes\":[{\"Id\":\"\",\"Name\":\"\",\"Element1Name\":\"\",\"Element2Name\":\"\",\"Point\":[0,0,0],\"Status\":1}]}]}",
             SceneJson.Write(doc));
+    }
+
+    [Fact]
+    public void A_clash_distance_that_is_not_reported_is_left_out_and_read_back_as_null()
+    {
+        var doc = GoldenScenes.Everything();
+        doc.ClashTests[0].Clashes[1].Distance = null;
+
+        string json = SceneJson.Write(doc);
+        Assert.Contains("\"Point\":[0,0,0],\"Status\":0}", json);
+        var back = SceneJson.Read(json);
+        Assert.Null(back.ClashTests[0].Clashes[1].Distance);
+        Assert.Equal(-0.05, back.ClashTests[0].Clashes[0].Distance);
+        Assert.Equal(json, SceneJson.Write(back));
+        Assert.Empty(back.Validate());
+
+        Assert.Null(SceneJson.Read(Head + ",\"ClashTests\":[{\"Clashes\":[{\"Distance\":null}]}]}").ClashTests[0].Clashes[0].Distance);
+        Assert.Equal(0.0, SceneJson.Read(Head + ",\"ClashTests\":[{\"Clashes\":[{\"Distance\":0}]}]}").ClashTests[0].Clashes[0].Distance);
     }
 
     [Fact]

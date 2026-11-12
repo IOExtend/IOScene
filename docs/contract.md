@@ -19,7 +19,6 @@ These never change.
   holds what an authoring tool edits. It is a one-way sink; no source file is rebuilt from it.
 - Metres, right-handed, Z up, `double`, **one coordinate space per document**. Producers convert on the way in and
   report the factor. There is no per-document or per-model scale for a consumer to apply.
-- Geometry stays local; large offsets go into the instance transform.
 - `Id` values are scene-local and assigned by the producer. **Only `(SceneModel.Key, SourceId)` and `IfcGuid` may be
   written to anything that outlives the document** (BCF, clash statuses, diffs). Ids inside one scene file (schedule
   tasks, clash results) are valid for that file only.
@@ -81,14 +80,14 @@ SceneLevel        int Id; int ModelId; string Name; double? Elevation
 SceneGridSystem   int ModelId; string Name; List<SceneGridLine> Lines     SceneGridLine  Name, Start, End, Elevation
 SceneViewpoint    string? Id; string Name; SceneCamera Camera
 SceneCamera       Position, Target, Up, FieldOfView (vertical, radians), AspectRatio, NearDistance, FarDistance,
-                  SceneProjection Projection (Perspective = 0, Orthographic = 1)
+                  SceneProjection Projection (Perspective = 0, Orthographic = 1)   // open enum
 SceneSchedule     int? ModelId; string Name; List<SceneTask> Tasks
-SceneTask         string Id, Name; SceneTaskType TaskType (Construct = 0, Demolish = 1, Temporary = 2);
+SceneTask         string Id, Name; SceneTaskType TaskType (Construct = 0, Demolish = 1, Temporary = 2);   // open enum
                   DateTimeOffset PlannedStart, PlannedEnd; DateTimeOffset? ActualStart, ActualEnd;
                   decimal? PlannedCost, ActualCost; double Progress; List<long> ElementIds; List<SceneTask> Children
 SceneClashTest    string Name; List<SceneClashResult> Clashes
 SceneClashResult  string Id, Name; long? Element1Id, Element2Id; string Element1Name, Element2Name; Vector3d Point;
-                  double Distance; SceneClashStatus Status
+                  double? Distance; SceneClashStatus Status
 SceneClashStatus  New = 0, Active = 1, Reviewed = 2, Approved = 3, Resolved = 4   // open enum
 SceneDiagnostic   (SceneSeverity Severity, string Code, string Message, string? SourceId)   // record
 SceneSeverity     Info = 0, Warning = 1, Error = 2
@@ -114,30 +113,35 @@ the right member. Each takes the display string; the library never invents one.
 | Meshes | Indexed or non-indexed triangles in `SceneGeometry`, optional normals and UVs. |
 | Shared geometry and transforms | **One path only**: `SceneInstance` -> `SceneGeometry` with an affine `Transform3d` (mirror and non-uniform scale allowed; null is the identity). A unique mesh is a geometry used once. One level; producers flatten nested blocks, hotlinks and assemblies. |
 | Lines, points | `Topology` on the geometry, so line work shares instancing (DWG blocks). A consumer that draws only triangles skips the rest and reports it. |
-| Sub-range of a geometry per instance (`IndexStart`, `IndexCount`) | **Open until 0.1.0, then in or never.** It is the one item that cannot be added later without a break: a consumer that ignores it draws the whole geometry for every element. The default is "never"; it goes into 0.1.0 only if the object count of a real 2D drawing shows that one geometry per entity does not fit. |
+| Sub-range of a geometry per instance (`IndexStart`, `IndexCount`) | **Never.** It cannot be added later without a break, and it is not needed: measured on 438 real DWG drawings, batching keeps them far under the limits. |
+| Large coordinates | Producers should keep geometry local and put large offsets into the instance transform. This is a recommendation, not an invariant: vertex coordinates may be large, and a consumer rebases them (for example on `ComputeBounds().Center`) before it narrows them to 32-bit floats. |
 | Curves | No. Producers tessellate with a tolerance option. |
 | Text | Into properties now. A label list is additive later. Never glyph outlines. |
-| Numeric id | `long Id`, scene-local. |
+| Numeric id | `long Id`, scene-local. **Every integer id is between `-(2^53 - 1)` and `2^53 - 1` (9007199254740991)**, so a reader that holds JSON numbers as doubles reads it exactly. `Validate()` reports any other id as `id-range`. |
 | Source id | `string? SourceId` scoped by `ModelId`: IFC GlobalId, Revit UniqueId, NWC node GUID, DWG handle as hex text. **Its derivation is frozen per producer** and covered by a golden identity test in the producer's repository; changing what a producer writes there is a breaking release of that producer. |
 | Model key | **One derivation per producer, for good:** the caller's value when given (an option such as `ModelKey`), else the file name without directory; `#2`, `#3` in source order for repeated placements of one file. It never switches to a "better" id. A better id, when an engine learns to decode one, goes into a new optional member (`SceneModel.SourceGuid`) that consumers match first. `Validate()` rejects an empty or duplicate key. |
 | Persisted identity | `(SceneModel.Key, SourceId)`. A `SceneModel` is one link **instance**. |
-| IFC GlobalId | **`string? SceneElement.IfcGuid`** (the name BCF uses). For an IFC source it equals `SourceId`. A producer for another format fills it with the GlobalId its engine's IFC exporter writes for that element. BCF and scene -> IFC use this member and nothing else; a deterministic GUID from the persisted identity is the fallback for elements that have neither. It is a member and not a property because identity must not depend on a "parameter level" option or on loading the property store. |
-| Tree | `ParentId` + `Kind` on the flat element list. One containment parent, chosen by the producer (an option such as "by level"). |
+| IFC GlobalId | **`string? SceneElement.IfcGuid`** (the name BCF uses). For an IFC source it equals `SourceId`. A producer for another format fills it with the GlobalId its engine's IFC exporter writes for that element. BCF and scene -> IFC use this member and nothing else; a deterministic GUID from the persisted identity is the fallback for elements that have neither. It is a member and not a property because identity must not depend on a "parameter level" option or on loading the property store. **Its derivation is frozen per producer**: it is a function of the element and the file only (no export order, no options), and it is in the producer's golden identity test. |
+| Tree | `ParentId` + `Kind` on the flat element list. One containment parent, chosen by the producer (an option such as "by level"). A parent of `Kind = Element` means "part of that element". `Model`, `Level` and `Group` nodes without `SourceId` are layout that a consumer may rebuild. A `Group` with `SourceId` is a source object (a model group, an assembly). |
 | Category, type | `Category` and `TypeName`, display strings. A stable machine class (`CategoryKey`) is an additive member with its first producer. |
 | Level | `LevelId` into the `Levels` table (per model, with elevation). |
 | Layer | Not in 0.1.0. `LayerId` on **`SceneInstance`** (entities inside one block sit on different layers) plus a `Layers` table are additive, with the first DWG producer. That producer drops off and frozen layers by default, so a consumer that ignores the table still shows correct output. |
 | System, phase, workset, design option, host, room | Properties with registered keys. |
 | Type objects | None. The parameters of a type are one `ScenePropertySet` referenced by every instance of the type. |
 | Property values | Typed. `Text` is always the display string as the source shows it. `Number` is in coherent SI when `Unit` is set. `Integer` is a separate `long` and also carries `Boolean` as 0/1. A producer that cannot type a value writes `Kind = Text`; values are never guessed from strings. `Validate()` reports a kind without its payload. |
-| Units | `Unit` follows one ASCII grammar ([section 9](#9-units)). `Validate()` warns on anything else. Null means dimensionless or not converted. |
+| Units | `Unit` follows one ASCII grammar ([section 9](#9-units)). `Validate()` warns on anything else. **When `Number` is present, `Unit` is authoritative and null means dimensionless.** A producer that cannot convert a dimensioned value writes `Kind = Text` with the number only in `Text`. |
 | Property keys | `Key` on set and property is opaque to the scene and qualified by the producer (`revit:bip:-1001107`, `ifc:Pset_WallCommon.IsExternal`). **Registry:** [keys.md](keys.md) lists each namespace, its owner package and the key format, and the `SourceFormat` values. A registered key format changes only with a breaking release of its producer. Saved searches, clash rules and writers of other formats address keys; a viewer shows names. |
+| Property lookup | A key may appear in several property sets of one element. A lookup by key takes the first set in `SceneElement.PropertySetIds` that has it. Producers list occurrence (instance) sets before type sets. |
 | Property sharing | Sets live in a document table and elements reference them by id. A geometry-free scene file and a property-free one are both valid documents, so a split export needs no property database; a join key (`SceneDocument.ExportId`) is additive when that is built. |
 | Materials | Name, RGBA, roughness, metalness, optional texture by id. Opacity is stored once (alpha), with one optional colour per instance. |
+| Colour | The RGB channels of `RgbaColor` are sRGB-encoded. Alpha is straight (not premultiplied) linear coverage. When a material has a texture, the colour multiplies it (glTF `baseColorFactor`), so a producer that means the plain texture writes white. |
+| Texture coordinates | `v = 0` is the bottom row of the image. The texture is sampled at `(u / ScaleX, v / ScaleY)` with repeat wrapping. Texture offset and rotation are baked into the UVs; they never become members. |
 | Coordinate frame, georeference | Not in 0.1.0. `SceneModel.Frame`, `ToShared` and a geo reference are additive members. They are a precondition of any consumer that tests two models against each other. |
-| Links, federation | The `Models` table plus `ModelId` on elements, levels, grids and schedules. A merge helper that renumbers ids is added with the first federation consumer. No nested scenes. |
+| Links, federation | The `Models` table plus `ModelId` on elements, levels, grids and schedules. `Models[0]` is the model of the file the producer was given; the others are its links or files federated with it. A merge helper that renumbers ids is added with the first federation consumer. No nested scenes. |
+| Grids | `SceneGridLine.Elevation` is the Z, in scene coordinates, of the level the line is drawn on. `Start` and `End` are authoritative for drawing. |
 | Viewpoints | In the scene: optional `Id` (a saved-viewpoint GUID or a BCF viewpoint GUID), name, camera. For an orthographic camera the visible height is `2 * |Target - Position| * tan(FieldOfView / 2)`. Clip planes and visibility lists are additive. |
-| 4D | `SceneSchedule` in the scene. |
-| Clash results | `SceneClashTest`, `SceneClashResult` and `SceneClashStatus` in the scene: results only. Rules, tolerances, the engine and the store of statuses across runs belong to the coordination tool. Further fields of a source (assignee, comments, dates) are additive. |
+| 4D | `SceneSchedule` in the scene. `SceneTask.Progress` is a fraction from 0 to 1. |
+| Clash results | `SceneClashTest`, `SceneClashResult` and `SceneClashStatus` in the scene: results only. Rules, tolerances, the engine and the store of statuses across runs belong to the coordination tool. Further fields of a source (assignee, comments, dates) are additive. `Distance` is in metres: below 0 it is the penetration depth, from 0 up it is the clearance (the Navisworks convention). Null means the source did not report it. |
 | Conversion report | Each producer returns its own result object with `Document` and `Diagnostics`, by convention. There is no base class and no interface in 0.1.0. |
 
 ## 4. What is not in the scene
@@ -160,7 +164,8 @@ the right member. Each takes the display string; the library never invents one.
 1. A new optional member whose default means "absent"; a new class; a new list on `SceneDocument`; a new method.
    A member or list added after 0.1.0 is left out of the file while it is null or empty, so a document that does
    not use the addition is written with the same bytes as before. (The lists of 0.1.0 are written when empty.)
-2. A new value of an open enum (`SceneNodeKind`, `SceneTopology`, `SceneValueKind`, `SceneClashStatus`).
+2. A new value of an open enum (`SceneNodeKind`, `SceneTopology`, `SceneValueKind`, `SceneClashStatus`,
+   `SceneTaskType`, `SceneProjection`).
 3. A new `init` property on a record. **Never a new positional parameter**: it changes the constructor and
    `Deconstruct`, which is a binary break for every compiled producer. The planned `ElementRef` and `DateTime` value
    kinds put their payload into such properties.
@@ -181,8 +186,12 @@ all packages go out in one session, in the order `IOScene`, engines with their p
 
 ### Breaking release of a producer (no `IOScene` change)
 
-A change in how a producer derives `Key` or `SourceId`, or in a registered key format. The producer's golden identity
-test fails first.
+A change in how a producer derives `Key`, `SourceId` or `IfcGuid`, in a registered key format, or in the value form it
+writes under a registered key (`Text`, `Kind`, `Unit`). These are frozen with the key format. The producer's golden
+identity test fails first; it covers `IfcGuid`, which is a function of the element and the file only (no export
+order, no options).
+
+Adding `Number` or `Integer` to a value that had only `Text` is additive only if `Text` stays byte-identical.
 
 ### Promotion rule
 
@@ -199,12 +208,17 @@ at the next breaking minor.
 
 ### Consumer obligations
 
-They make the open enums safe:
+They make the open enums and the open ends of the model safe:
 
 - branch on `Topology`; skip and report a value you do not know;
 - treat an unknown `SceneNodeKind` as `Group`;
 - treat an unknown `SceneValueKind` as `Text` (its display string is always there);
-- treat an unknown `SceneClashStatus` as `Active`.
+- treat an unknown `SceneClashStatus` as `Active`;
+- treat an unknown `SceneTaskType` as `Construct`;
+- treat an unknown `SceneProjection` as `Perspective`;
+- treat a `Unit` you cannot parse as unknown: show `Text` and do not compare `Number`;
+- expect large vertex coordinates: rebase (for example on `ComputeBounds().Center`) before narrowing to 32-bit floats;
+- look a property up by key in the first set of `SceneElement.PropertySetIds` that has it.
 
 The reader keeps enum numbers it does not know, and writes them back.
 
@@ -291,7 +305,7 @@ A file needs `Kind` and `Format` and nothing else. Every other member is optiona
 | any list, `SceneTexture.Data` | empty |
 | any member marked `?` in [section 2](#2-types) | absent (`null`) |
 | any other text (`Title`, `Key`, `Name`, `Category`, `TypeName`, `Id` of a task or clash, `Element1Name`, `Element2Name`, `SceneValue.Text`) | empty string, except the three names below |
-| any other id or number (`Id`, `ModelId`, `ElementId`, `GeometryId`, `Elevation` of a grid line, `Distance`, `Progress`), `Vector3d` (`Start`, `End`, `Point`, `Target`) | 0 |
+| any other id or number (`Id`, `ModelId`, `ElementId`, `GeometryId`, `Elevation` of a grid line, `Progress`), `Vector3d` (`Start`, `End`, `Point`, `Target`) | 0 |
 | any enum, except `SceneClashResult.Status` | its value 0 (`Element`, `Triangles`, `Text`, `Perspective`, `Construct`) |
 | `SceneTask.PlannedStart`, `PlannedEnd` | `0001-01-01T00:00:00+00:00` |
 | `SceneMaterial.Color` | `[200,200,200,255]` |
@@ -346,6 +360,7 @@ stable strings. Later versions may add codes.
 | `value-payload` | error | A property value of kind `Number` has no `Number`, of kind `Integer` has no `Integer`, or of kind `Boolean` has an `Integer` other than 0 or 1. |
 | `task-tree` | error | A schedule lists one task twice, or a task is inside its own sub-tasks. |
 | `task-depth` | error | A schedule nests tasks deeper than 30 levels. Reported once per schedule. |
+| `id-range` | error | An element id, a parent id, or an element id named by an instance, a schedule task or a clash is outside `-(2^53 - 1)` to `2^53 - 1`. |
 | `duplicate-source-id` | warning | Two elements of one model share a source id. |
 | `level-model` | warning | An element names a level of another model. Levels are per model. |
 | `ifc-guid` | warning | An `IfcGuid` is not a 22-character IFC GlobalId (characters `0-9A-Za-z_$`, the first one `0` to `3`). |

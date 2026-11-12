@@ -11,7 +11,10 @@ public sealed class SceneMaterial
     /// <summary>Display name.</summary>
     public string Name { get; set; } = string.Empty;
 
-    /// <summary>Base colour. Its alpha is the only opacity of the material.</summary>
+    /// <summary>
+    /// Base colour. Its alpha is the only opacity of the material. When the material has a texture, the colour
+    /// multiplies it (glTF <c>baseColorFactor</c>), so white shows the plain texture.
+    /// </summary>
     public RgbaColor Color { get; set; } = new(200, 200, 200);
 
     /// <summary>Roughness from 0 (mirror) to 1 (matt).</summary>
@@ -38,9 +41,15 @@ public sealed class SceneTexture
     /// <summary>The encoded image file. In JSON it is a base64 string.</summary>
     public byte[] Data { get; set; } = [];
 
-    /// <summary>Width of one repeat of the image, in units of the U texture coordinate.</summary>
+    /// <summary>
+    /// Width of one repeat of the image, in units of the U texture coordinate: the image is sampled at
+    /// U / <see cref="ScaleX"/> with repeat wrapping.
+    /// </summary>
     public double ScaleX { get; set; } = 1.0;
 
-    /// <summary>Height of one repeat of the image, in units of the V texture coordinate.</summary>
+    /// <summary>
+    /// Height of one repeat of the image, in units of the V texture coordinate: the image is sampled at
+    /// V / <see cref="ScaleY"/> with repeat wrapping, and V = 0 is its bottom row.
+    /// </summary>
     public double ScaleY { get; set; } = 1.0;
 }

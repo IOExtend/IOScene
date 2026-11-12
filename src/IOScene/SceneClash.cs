@@ -48,8 +48,11 @@ public sealed class SceneClashResult
     /// <summary>Location of the clash in scene coordinates.</summary>
     public Vector3d Point { get; set; }
 
-    /// <summary>Clash distance in metres, as the source reports it.</summary>
-    public double Distance { get; set; }
+    /// <summary>
+    /// Clash distance in metres, or null when the source does not report it. Below 0 it is the penetration depth,
+    /// from 0 up it is the clearance (the Navisworks convention).
+    /// </summary>
+    public double? Distance { get; set; }
 
     /// <summary>Review status.</summary>
     public SceneClashStatus Status { get; set; } = SceneClashStatus.Active;

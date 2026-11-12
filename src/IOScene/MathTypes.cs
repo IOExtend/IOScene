@@ -164,8 +164,8 @@ public readonly record struct Transform3d(Vector3d XAxis, Vector3d YAxis, Vector
 }
 
 /// <summary>
-/// Colour with 8 bits per channel. Alpha is the only opacity in a scene. In JSON it is an array of four integers
-/// from 0 to 255.
+/// Colour with 8 bits per channel. Red, green and blue are sRGB-encoded. Alpha is straight (not premultiplied)
+/// linear coverage and the only opacity in a scene. In JSON it is an array of four integers from 0 to 255.
 /// </summary>
 /// <param name="R">Red.</param>
 /// <param name="G">Green.</param>

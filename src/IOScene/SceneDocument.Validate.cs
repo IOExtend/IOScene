@@ -29,6 +29,7 @@ public sealed partial class SceneDocument
     /// <item><term>value-payload</term><description>A property value of kind Number has no Number, of kind Integer has no Integer, or of kind Boolean has an Integer other than 0 or 1.</description></item>
     /// <item><term>task-tree</term><description>A schedule lists a task twice, or a task is inside its own sub-tasks.</description></item>
     /// <item><term>task-depth</term><description>A schedule nests tasks deeper than 30 levels.</description></item>
+    /// <item><term>id-range</term><description>An element id, a parent id, or an element id named by an instance, a schedule task or a clash is outside -(2^53 - 1) to 2^53 - 1.</description></item>
     /// </list>
     /// <para>Warnings:</para>
     /// <list type="table">
@@ -47,6 +48,10 @@ public sealed partial class SceneDocument
             issues.Add(new(SceneSeverity.Error, code, FormattableString.Invariant(message), sourceId));
         void Warning(string code, FormattableString message, string? sourceId = null) =>
             issues.Add(new(SceneSeverity.Warning, code, FormattableString.Invariant(message), sourceId));
+        void IdRange(long id, FormattableString what, string? sourceId = null)
+        {
+            if (id is < -MaxId or > MaxId) Error("id-range", $"{what} {id}: an id is between -(2^53 - 1) and 2^53 - 1.", sourceId);
+        }
         HashSet<T> Ids<T>(IEnumerable<T> ids, string what) where T : notnull
         {
             var set = new HashSet<T>();
@@ -72,6 +77,8 @@ public sealed partial class SceneDocument
 
         foreach (var e in Elements)
         {
+            IdRange(e.Id, $"Element id", e.SourceId);
+            if (e.ParentId is long parentId) IdRange(parentId, $"Element {e.Id} names parent id", e.SourceId);
             if (!models.Contains(e.ModelId)) Error("dangling-model", $"Element {e.Id} names model {e.ModelId}.", e.SourceId);
             if (e.LevelId is int level)
             {
@@ -91,6 +98,7 @@ public sealed partial class SceneDocument
 
         foreach (var i in Instances)
         {
+            IdRange(i.ElementId, $"An instance names element id");
             if (!elements.Contains(i.ElementId)) Error("dangling-element", $"An instance names element {i.ElementId}.");
             if (!geometries.Contains(i.GeometryId)) Error("dangling-geometry", $"An instance names geometry {i.GeometryId}.");
             if (i.MaterialId is int material && !materials.Contains(material)) Error("dangling-material", $"An instance names material {material}.");
@@ -179,6 +187,7 @@ public sealed partial class SceneDocument
                 if (!double.IsFinite(task.Progress)) Error("not-finite", $"Task '{task.Id}' has a progress that is not finite.");
                 foreach (long id in task.ElementIds)
                 {
+                    IdRange(id, $"Task '{task.Id}' names element id");
                     if (!elements.Contains(id)) Error("dangling-element", $"Task '{task.Id}' names element {id}.");
                 }
                 foreach (var child in task.Children) tasks.Push((child, depth + 1));
@@ -186,10 +195,12 @@ public sealed partial class SceneDocument
         }
         foreach (var c in ClashTests.SelectMany(t => t.Clashes))
         {
-            if (!(IsFinite(c.Point) && double.IsFinite(c.Distance))) Error("not-finite", $"Clash '{c.Id}' has a number that is not finite.");
+            if (!(IsFinite(c.Point) && (c.Distance is not double distance || double.IsFinite(distance)))) Error("not-finite", $"Clash '{c.Id}' has a number that is not finite.");
             foreach (long? id in new[] { c.Element1Id, c.Element2Id })
             {
-                if (id is long known && !elements.Contains(known)) Error("dangling-element", $"Clash '{c.Id}' names element {known}.");
+                if (id is not long known) continue;
+                IdRange(known, $"Clash '{c.Id}' names element id");
+                if (!elements.Contains(known)) Error("dangling-element", $"Clash '{c.Id}' names element {known}.");
             }
         }
         return issues;

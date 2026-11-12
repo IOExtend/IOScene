@@ -25,7 +25,10 @@ public enum SceneNodeKind
 /// </summary>
 public sealed class SceneElement
 {
-    /// <summary>Scene-local id, assigned by the producer. It is valid inside this document only.</summary>
+    /// <summary>
+    /// Scene-local id, assigned by the producer. It is valid inside this document only. Like every integer id of a
+    /// scene it is between -(2^53 - 1) and 2^53 - 1.
+    /// </summary>
     public long Id { get; set; }
 
     /// <summary>Id of the <see cref="SceneModel"/> the element belongs to.</summary>
@@ -39,11 +42,17 @@ public sealed class SceneElement
 
     /// <summary>
     /// The 22-character IFC GlobalId the element has, or gets when it is exported to IFC. It is the only component
-    /// id for BCF. For an IFC source it equals <see cref="SourceId"/>.
+    /// id for BCF. For an IFC source it equals <see cref="SourceId"/>. Its derivation is frozen per producer: it is a
+    /// function of the element and the file only, never of the export order or of options.
     /// </summary>
     public string? IfcGuid { get; set; }
 
-    /// <summary>Id of the one containment parent; null for a root.</summary>
+    /// <summary>
+    /// Id of the one containment parent; null for a root. A parent of kind <see cref="SceneNodeKind.Element"/> means
+    /// that this element is part of it. Model, level and group nodes without <see cref="SourceId"/> are layout that a
+    /// consumer may rebuild; a group with <see cref="SourceId"/> is an object of the source, such as a model group or
+    /// an assembly.
+    /// </summary>
     public long? ParentId { get; set; }
 
     /// <summary>Role of the element in the tree.</summary>
@@ -61,6 +70,10 @@ public sealed class SceneElement
     /// <summary>Id of the <see cref="SceneLevel"/> the element is on, or null.</summary>
     public int? LevelId { get; set; }
 
-    /// <summary>Ids of the element's property sets, in display order. Sets are shared between elements.</summary>
+    /// <summary>
+    /// Ids of the element's property sets, in display order. Sets are shared between elements. A key may appear in
+    /// several sets; a lookup by key takes the first set in this list that has it, and producers list occurrence
+    /// sets before type sets.
+    /// </summary>
     public List<int> PropertySetIds { get; set; } = [];
 }

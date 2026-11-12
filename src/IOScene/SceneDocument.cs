@@ -29,6 +29,9 @@ public sealed partial class SceneDocument
     // Task levels that fit the 64 levels of nesting that JSON readers allow by default.
     private const int MaxTaskDepth = 30;
 
+    // Largest integer id: 2^53 - 1, the largest integer that a reader holding JSON numbers as doubles keeps exact.
+    private const long MaxId = (1L << 53) - 1;
+
 #pragma warning disable CA1822 // Kind and Format are instance members: the serialiser writes and reads them as members of the root.
     /// <summary>
     /// Root discriminator of the JSON file, always <see cref="DocumentKind"/>. Assigning any other value throws
@@ -66,7 +69,10 @@ public sealed partial class SceneDocument
     /// <summary>Display title of the scene.</summary>
     public string Title { get; set; } = string.Empty;
 
-    /// <summary>Source files, or placements of linked files. A valid scene has at least one.</summary>
+    /// <summary>
+    /// Source files, or placements of linked files. A valid scene has at least one. The first is the model of the file
+    /// the producer was given; the others are its links or files federated with it.
+    /// </summary>
     public List<SceneModel> Models { get; set; } = [];
 
     /// <summary>Materials, referenced by <see cref="SceneInstance.MaterialId"/>.</summary>

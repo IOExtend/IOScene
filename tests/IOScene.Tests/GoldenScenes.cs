@@ -142,7 +142,7 @@ internal static class GoldenScenes
             Clashes =
             {
                 new SceneClashResult { Id = "c1", Name = "Clash 1", Element1Id = 10, Element2Id = 12, Element1Name = "Wall 1", Element2Name = "Survey points", Point = new(1, 2, 3), Distance = -0.05, Status = SceneClashStatus.Reviewed },
-                new SceneClashResult { Id = "c2", Name = "Clash 2", Element1Name = "Unknown", Element2Name = "Unknown", Status = SceneClashStatus.New },
+                new SceneClashResult { Id = "c2", Name = "Clash 2", Element1Name = "Unknown", Element2Name = "Unknown", Distance = 0, Status = SceneClashStatus.New },
             },
         });
         return doc;

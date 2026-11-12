@@ -116,6 +116,45 @@ public class ValidateTests
         Assert.Equal(new[] { "dangling-element" }, Codes(With(d => d.ClashTests[0].Clashes[0].Element2Id = 999)));
     }
 
+    [Theory]
+    [InlineData(9_007_199_254_740_991L, false)]    // 2^53 - 1
+    [InlineData(-9_007_199_254_740_991L, false)]
+    [InlineData(9_007_199_254_740_992L, true)]     // 2^53
+    [InlineData(-9_007_199_254_740_992L, true)]
+    [InlineData(long.MaxValue, true)]
+    [InlineData(long.MinValue, true)]
+    public void Id_range(long id, bool reported)
+    {
+        var issues = With(d =>
+        {
+            Element(d, 13).Id = id;
+            d.Elements.Add(new SceneElement { Id = 14, ModelId = 2, ParentId = id });
+            d.Instances.Add(new SceneInstance { ElementId = id, GeometryId = 1 });
+            d.Schedules[0].Tasks[0].Children[0].ElementIds.Add(id);
+            d.ClashTests[0].Clashes[1].Element1Id = id;
+        }).Validate();
+
+        if (!reported)
+        {
+            Assert.Empty(issues);
+            return;
+        }
+        Assert.All(issues, issue => Assert.Equal(("id-range", SceneSeverity.Error), (issue.Code, issue.Severity)));
+        string range = ": an id is between -(2^53 - 1) and 2^53 - 1.";
+        Assert.Equal(
+            new[] { "Element id ", "Element 14 names parent id ", "An instance names element id ", "Task 'T1.1' names element id ", "Clash 'c2' names element id " }
+                .Select(what => what + id.ToString(System.Globalization.CultureInfo.InvariantCulture) + range),
+            issues.Select(issue => issue.Message));
+    }
+
+    [Fact]
+    public void A_clash_distance_is_optional_and_finite_when_it_is_there()
+    {
+        Assert.Empty(With(d => d.ClashTests[0].Clashes[0].Distance = null).Validate());
+        Assert.Equal(new[] { "not-finite" }, Codes(With(d => d.ClashTests[0].Clashes[0].Distance = double.NaN)));
+        Assert.Equal(new[] { "not-finite" }, Codes(With(d => d.ClashTests[0].Clashes[1].Distance = double.NegativeInfinity)));
+    }
+
     [Fact]
     public void Dangling_geometry() => Assert.Equal(new[] { "dangling-geometry" }, Codes(With(d => d.Instances[0].GeometryId = 99)));
 
