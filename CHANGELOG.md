@@ -6,7 +6,9 @@ and the project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## [Unreleased]
 
-First preview of the scene contract. Names and members may still change before 0.1.0.
+## [0.1.0-preview.2] - 2026-11-12
+
+First published preview of the scene contract. Names and members may still change before 0.1.0.
 
 ### Added
 - The scene model: `SceneDocument` with models, elements, instances, geometries, materials, textures, property sets,
@@ -24,7 +26,7 @@ First preview of the scene contract. Names and members may still change before 0
 - Math types `Vector2d`, `Vector3d`, `BoundingBox3d`, `Transform3d` and `RgbaColor`.
 - `docs/contract.md` (the specification) and `docs/keys.md` (the registry of property key namespaces).
 
-### Changed since 0.1.0-preview.1
+### Changed since 0.1.0-preview.1, which was not published
 - `SceneClashResult.Distance` is `double?`: null means not reported, below 0 is the penetration depth and from 0 up
   the clearance, in metres. A missing `Distance` in a file reads as null.
 - `Validate()` reports `id-range` for an element id outside `-(2^53 - 1)` to `2^53 - 1`, also where an element,
