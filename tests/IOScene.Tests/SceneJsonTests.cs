@@ -135,6 +135,25 @@ public class SceneJsonTests
     }
 
     [Fact]
+    public void A_null_for_an_object_is_read_as_missing() =>
+        Assert.Equal(0.785, SceneJson.Read(Head + ",\"Viewpoints\":[{\"Camera\":null}]}").Viewpoints[0].Camera.FieldOfView);
+
+    [Theory]
+    [InlineData("\"Grids\":[{\"Lines\":[{\"Elevation\":null}]}]")]                                   // a number
+    [InlineData("\"Elements\":[{\"Id\":null}]")]                                                      // an id
+    [InlineData("\"Elements\":[{\"Id\":1,\"Kind\":null}]")]                                           // an enum
+    [InlineData("\"ClashTests\":[{\"Clashes\":[{\"Point\":null}]}]")]                                 // a math value
+    [InlineData("\"Materials\":[{\"Id\":1,\"Color\":null}]")]
+    [InlineData("\"Schedules\":[{\"Tasks\":[{\"PlannedStart\":null}]}]")]                             // a date-time
+    [InlineData("\"PropertySets\":[{\"Id\":1,\"Properties\":[{\"Name\":\"P\",\"Value\":null}]}]")]   // a property value
+    public void A_null_for_a_member_that_is_a_value_is_rejected(string table)
+    {
+        Assert.Throws<InvalidDataException>(() => SceneJson.Read(Head + "," + table + "}"));
+        // In a document of another kind the serializer's own exception comes through.
+        Assert.Throws<JsonException>(() => JsonSerializer.Deserialize<Holder>("{\"Scene\":" + Head + "," + table + "}}", SceneJson.CreateOptions()));
+    }
+
+    [Fact]
     public void Unknown_members_and_unknown_enum_numbers_survive_a_round_trip_as_numbers()
     {
         var doc = SceneJson.Read(Head + ",\"Later\":[{\"A\":1}],\"Elements\":[{\"Id\":1,\"Kind\":9,\"Later\":true}],"

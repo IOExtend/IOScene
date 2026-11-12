@@ -40,9 +40,12 @@ public static class SceneJson
     /// <summary>
     /// Creates serializer options that carry the rules of scene JSON, for a document of another kind that holds a
     /// <see cref="SceneDocument"/> as a member. The math values keep their array encoding with any options; these
-    /// options add the rest: null members are omitted, an explicit <c>null</c> is read as a missing member, a
-    /// <c>null</c> inside a list of objects is rejected with <see cref="InvalidDataException"/>, and text is escaped
-    /// as <see cref="Write(SceneDocument, Stream)"/> escapes it.
+    /// options add the rest: null members are omitted; an explicit <c>null</c> is read as a missing member for text
+    /// (except <see cref="SceneDocument.Kind"/>, which rejects it), lists, objects and nullable members, and makes the
+    /// serializer throw <see cref="JsonException"/> for a member of any other type, such as a number, an enum, a math
+    /// value or a date-time; a <c>null</c> inside a list of objects is rejected with
+    /// <see cref="InvalidDataException"/>; and text is escaped as <see cref="Write(SceneDocument, Stream)"/> escapes
+    /// it.
     /// </summary>
     /// <remarks>
     /// The rules apply to every type that is read or written with the options, the holder included. Two things that
@@ -150,8 +153,10 @@ public static class SceneJson
         }
     }
 
-    // Reading treats an explicit null like a missing member, so no member typed as non-null comes back null, and
-    // rejects a null inside a list of objects. A nullable member is null by default, so skipping its null changes nothing.
+    // Reading treats an explicit null for a member of a reference type like a missing member, so no member typed as
+    // non-null comes back null, and rejects a null inside a list of objects. A nullable member is null by default, so
+    // skipping its null changes nothing. A null for a value type is left to the serialiser, which reads it into a
+    // nullable member and rejects it for any other.
     private static void Harden(JsonTypeInfo info)
     {
         if (info.Kind != JsonTypeInfoKind.Object) return;

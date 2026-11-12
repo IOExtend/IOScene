@@ -281,9 +281,11 @@ the range `[0.N.0, 0.N+1.0-0)`; the `-0` keeps out the previews of the next brea
   elements with parents first, instances, then grids, viewpoints, schedules and clash tests. Readers must not rely on
   it.
 - Reader rules: unknown members are ignored; a missing optional member takes its default
-  ([below](#required-members-and-defaults)), and so does an explicit `null`; a `null` inside a list of objects is
-  rejected; a newer `Format` is rejected with a clear message, never half-read. The reader does not validate: call
-  `Validate()`.
+  ([below](#required-members-and-defaults)). An explicit `null` reads as the default for text other than `Kind`, a
+  list, `SceneTexture.Data`, an object (`SceneViewpoint.Camera`) and a member marked `?`. A `null` for any other
+  member (a number or an id, an enum, a math value, a date-time, a property value) is never written, and
+  `SceneJson.Read` rejects it with `InvalidDataException`. A `null` inside a list of objects is rejected; a newer
+  `Format` is rejected with a clear message, never half-read. The reader does not validate: call `Validate()`.
 - Numbers that are not finite cannot be written; `SceneJson.Write` throws `ArgumentException`. `Validate()` reports
   every one of them as `not-finite`, also after reading a file in which a number such as `1e999` overflows.
 - **Limits of format 1.** One geometry holds at most 10,000,000 vertices: a vertex, normal or UV list is one JSON
@@ -297,8 +299,9 @@ the range `[0.N.0, 0.N+1.0-0)`; the `-0` keeps out the previews of the next brea
 
 ### Required members and defaults
 
-A file needs `Kind` and `Format` and nothing else. Every other member is optional, and a member that is missing (or
-`null`) reads as its default. The defaults are part of format 1; changing one is a breaking change.
+A file needs `Kind` and `Format` and nothing else. Every other member is optional, and a member that is missing reads
+as its default; so does a `null` where the reader rules above allow it. The defaults are part of format 1; changing
+one is a breaking change.
 
 | Member | Default |
 |---|---|
@@ -366,8 +369,10 @@ stable strings. Later versions may add codes.
 | `ifc-guid` | warning | An `IfcGuid` is not a 22-character IFC GlobalId (characters `0-9A-Za-z_$`, the first one `0` to `3`). |
 | `unit-grammar` | warning | A property unit is outside the unit grammar. Reported once per unit. |
 
-A geometry whose topology this version does not know is not checked for counts, and a property value whose kind
-this version does not know is not checked for its payload.
+A geometry whose topology this version does not know is not checked for `vertex-count` and `index-count`. Its indices
+still point into `Vertices`, and its normals and texture coordinates are still one per vertex, so `index-range`,
+`normal-count` and `uv-count` apply to every topology. A property value whose kind this version does not know is not
+checked for its payload.
 
 ## 9. Units
 
