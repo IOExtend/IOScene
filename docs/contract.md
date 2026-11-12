@@ -92,11 +92,20 @@ SceneClashResult  string Id, Name; long? Element1Id, Element2Id; string Element1
 SceneClashStatus  New = 0, Active = 1, Reviewed = 2, Approved = 3, Resolved = 4   // open enum
 SceneDiagnostic   (SceneSeverity Severity, string Code, string Message, string? SourceId)   // record
 SceneSeverity     Info = 0, Warning = 1, Error = 2
-SceneJson         Write(doc, Stream), Read(Stream), Save(doc, path), Load(path); string overloads are conveniences
+SceneJson         Write(doc, Stream), Read(Stream), Save(doc, path), Load(path); string overloads are conveniences;
+                  CreateOptions() for a document of another kind that holds a scene
 Math              Vector2d, Vector3d, BoundingBox3d, Transform3d, RgbaColor
 ```
 
 `Transform3d` is stored by columns: `Apply(p) = XAxis * p.X + YAxis * p.Y + ZAxis * p.Z + Translation`.
+
+`Kind` and `Format` are constants of the library, not data of a scene: they always read `"ioscene"` and the format
+the library writes, and cannot be set to another value. Assigning another value throws `InvalidDataException`, which
+is how a file of another kind or of a newer format is rejected on reading. `SceneDocument.DocumentKind` and
+`SceneDocument.CurrentFormat` give the two values without a document.
+
+`SceneValue.FromText`, `FromBoolean`, `FromInteger` and `FromNumber` create a value of each kind with its payload in
+the right member. Each takes the display string; the library never invents one.
 
 ## 3. Decisions by topic
 
@@ -119,7 +128,7 @@ Math              Vector2d, Vector3d, BoundingBox3d, Transform3d, RgbaColor
 | Layer | Not in 0.1.0. `LayerId` on **`SceneInstance`** (entities inside one block sit on different layers) plus a `Layers` table are additive, with the first DWG producer. That producer drops off and frozen layers by default, so a consumer that ignores the table still shows correct output. |
 | System, phase, workset, design option, host, room | Properties with registered keys. |
 | Type objects | None. The parameters of a type are one `ScenePropertySet` referenced by every instance of the type. |
-| Property values | Typed. `Text` is always the display string as the source shows it. `Number` is in coherent SI when `Unit` is set. `Integer` is a separate `long` and also carries `Boolean` as 0/1. A producer that cannot type a value writes `Kind = Text`; values are never guessed from strings. |
+| Property values | Typed. `Text` is always the display string as the source shows it. `Number` is in coherent SI when `Unit` is set. `Integer` is a separate `long` and also carries `Boolean` as 0/1. A producer that cannot type a value writes `Kind = Text`; values are never guessed from strings. `Validate()` reports a kind without its payload. |
 | Units | `Unit` follows one ASCII grammar ([section 9](#9-units)). `Validate()` warns on anything else. Null means dimensionless or not converted. |
 | Property keys | `Key` on set and property is opaque to the scene and qualified by the producer (`revit:bip:-1001107`, `ifc:Pset_WallCommon.IsExternal`). **Registry:** [keys.md](keys.md) lists each namespace, its owner package and the key format, and the `SourceFormat` values. A registered key format changes only with a breaking release of its producer. Saved searches, clash rules and writers of other formats address keys; a viewer shows names. |
 | Property sharing | Sets live in a document table and elements reference them by id. A geometry-free scene file and a property-free one are both valid documents, so a split export needs no property database; a join key (`SceneDocument.ExportId`) is additive when that is built. |
@@ -149,6 +158,8 @@ Math              Vector2d, Vector3d, BoundingBox3d, Transform3d, RgbaColor
 ### Additive (a patch in 0.x, a minor from 1.0)
 
 1. A new optional member whose default means "absent"; a new class; a new list on `SceneDocument`; a new method.
+   A member or list added after 0.1.0 is left out of the file while it is null or empty, so a document that does
+   not use the addition is written with the same bytes as before. (The lists of 0.1.0 are written when empty.)
 2. A new value of an open enum (`SceneNodeKind`, `SceneTopology`, `SceneValueKind`, `SceneClashStatus`).
 3. A new `init` property on a record. **Never a new positional parameter**: it changes the constructor and
    `Deconstruct`, which is a binary break for every compiled producer. The planned `ElementRef` and `DateTime` value
@@ -230,8 +241,12 @@ the range `[0.N.0, 0.N+1.0-0)`; the `-0` keeps out the previews of the next brea
 ## 7. Serialisation and versioning
 
 - `SceneJson` uses `System.Text.Json` and nothing outside the base class library. Member names are the property
-  names in PascalCase, null members are omitted, enums are numbers. Text is UTF-8; characters outside ASCII are
-  written as they are.
+  names in PascalCase, null members are omitted, enums are numbers.
+- Text is UTF-8. The writer writes the letters of the Basic Multilingual Plane as they are, and writes characters
+  outside it, a few that do not print (such as U+00A0) and the ASCII characters `" & ' + < >` and the grave accent
+  as `\uXXXX` escapes. A reader accepts either form of any character. **Which characters are escaped is not part of the format**: it
+  follows the Unicode tables of the .NET runtime, so two runtimes may write a character that was assigned recently
+  in different ways. Compare scene files as JSON, not as bytes.
 - **Root discriminator:** `"Kind": "ioscene"`, then `"Format": 1`. A viewer's own JSON has another kind, and a file
   without `Kind` is not a scene. The scene reader accepts only its own kind: it rejects a file without `Kind`, without
   `Format`, of another kind or of a newer format, in one pass over the stream.
@@ -240,21 +255,58 @@ the range `[0.N.0, 0.N+1.0-0)`; the `-0` keeps out the previews of the next brea
   is about 55 bytes per vertex against 69 for an array of objects, measured on 100,000 full-precision vertices. It is
   a saving, not a cure: text doubles dominate. The cure for size is a new encoding (item 4 of section 5), which is
   why `Format` is not tied to a breaking package version.
-- The converters are attached to the types, so any `System.Text.Json` serialisation of a scene or of a math value
-  gives the same encoding, for example a scene embedded in another document.
+- The converters of the math values are attached to the types, so any `System.Text.Json` serialisation of a scene
+  writes them as arrays, and `Kind` and `Format` are checked whoever reads the scene. The other rules of this section
+  (null members omitted, the reader rules, the escaping) belong to `SceneJson`. A document of another kind that holds
+  a scene as a member gets them from `SceneJson.CreateOptions()`, which returns serializer options for the whole
+  document. Such a document lists the elements in the order of the list, not parents first.
 - **`Stream` is the primary API** (`Write(doc, Stream)`, `Read(Stream)`). The `string` overloads stay as
   conveniences; a .NET string caps a document at about a billion characters.
 - Textures are `byte[]` in the model and base64 in the file.
 - The writer emits tables in dependency order: models, materials, textures, property sets, levels, geometries,
   elements with parents first, instances, then grids, viewpoints, schedules and clash tests. Readers must not rely on
   it.
-- Reader rules: unknown members are ignored; a missing optional member takes its default, and so does a `null` for a
-  member that is never null; a `null` inside a list of objects is rejected; a newer `Format` is rejected with a clear
-  message, never half-read. The reader does not validate: call `Validate()`.
-- Numbers that are not finite cannot be written; `SceneJson.Write` throws. `Validate()` reports them first.
+- Reader rules: unknown members are ignored; a missing optional member takes its default
+  ([below](#required-members-and-defaults)), and so does an explicit `null`; a `null` inside a list of objects is
+  rejected; a newer `Format` is rejected with a clear message, never half-read. The reader does not validate: call
+  `Validate()`.
+- Numbers that are not finite cannot be written; `SceneJson.Write` throws `ArgumentException`. `Validate()` reports
+  every one of them as `not-finite`, also after reading a file in which a number such as `1e999` overflows.
+- **Limits of format 1.** One geometry holds at most 10,000,000 vertices: a vertex, normal or UV list is one JSON
+  value, and a reader holds one value in one buffer. `SceneJson.Write` refuses a larger geometry with
+  `ArgumentException` before it writes anything; a producer splits the mesh. A schedule nests tasks at most 30
+  levels deep, which keeps a file within 64 levels of JSON nesting, the default limit of common readers;
+  `Validate()` reports a deeper tree as `task-depth`.
 - `Format` counts file encodings of kind `ioscene`. It is bumped by a breaking model change and may also be bumped by a
   new encoding in an additive release. Golden files of every released `Format` are committed in
   `tests/golden/format-N` and read by every later version in tests.
+
+### Required members and defaults
+
+A file needs `Kind` and `Format` and nothing else. Every other member is optional, and a member that is missing (or
+`null`) reads as its default. The defaults are part of format 1; changing one is a breaking change.
+
+| Member | Default |
+|---|---|
+| any list, `SceneTexture.Data` | empty |
+| any member marked `?` in [section 2](#2-types) | absent (`null`) |
+| any other text (`Title`, `Key`, `Name`, `Category`, `TypeName`, `Id` of a task or clash, `Element1Name`, `Element2Name`, `SceneValue.Text`) | empty string, except the three names below |
+| any other id or number (`Id`, `ModelId`, `ElementId`, `GeometryId`, `Elevation` of a grid line, `Distance`, `Progress`), `Vector3d` (`Start`, `End`, `Point`, `Target`) | 0 |
+| any enum, except `SceneClashResult.Status` | its value 0 (`Element`, `Triangles`, `Text`, `Perspective`, `Construct`) |
+| `SceneTask.PlannedStart`, `PlannedEnd` | `0001-01-01T00:00:00+00:00` |
+| `SceneMaterial.Color` | `[200,200,200,255]` |
+| `SceneMaterial.Roughness`, `Metalness` | 0.5, 0.1 |
+| `SceneTexture.MimeType` | `image/png` |
+| `SceneTexture.ScaleX`, `ScaleY` | 1 |
+| `SceneGridSystem.Name` | `Grids` |
+| `SceneViewpoint.Name` | `Viewpoint` |
+| `SceneViewpoint.Camera` | a camera with the defaults of the next row |
+| `SceneCamera.Position`, `Up`, `FieldOfView`, `AspectRatio`, `NearDistance`, `FarDistance` | `[10,10,10]`, `[0,0,1]`, 0.785, 1.6, 0.1, 1000 |
+| `SceneClashTest.Name` | `Clash Test` |
+| `SceneClashResult.Status` | 1 (`Active`) |
+
+A producer does not rely on the defaults that are not "absent" or empty: it writes the name, the colour and the
+camera it means.
 
 A minimal file:
 
@@ -290,12 +342,17 @@ stable strings. Later versions may add codes.
 | `index-range` | error | A geometry has an index outside its vertices. |
 | `normal-count` | error | A geometry has normals, but not one per vertex. |
 | `uv-count` | error | A geometry has texture coordinates, but not one per vertex. |
-| `not-finite` | error | A vertex, normal, texture coordinate, instance transform or property number is NaN or infinite. |
+| `not-finite` | error | A number of the scene is NaN or infinite: in a geometry, an instance transform, a property value, a material, a texture scale, a level, a grid line, a camera, a task or a clash. |
+| `value-payload` | error | A property value of kind `Number` has no `Number`, of kind `Integer` has no `Integer`, or of kind `Boolean` has an `Integer` other than 0 or 1. |
+| `task-tree` | error | A schedule lists one task twice, or a task is inside its own sub-tasks. |
+| `task-depth` | error | A schedule nests tasks deeper than 30 levels. Reported once per schedule. |
 | `duplicate-source-id` | warning | Two elements of one model share a source id. |
+| `level-model` | warning | An element names a level of another model. Levels are per model. |
 | `ifc-guid` | warning | An `IfcGuid` is not a 22-character IFC GlobalId (characters `0-9A-Za-z_$`, the first one `0` to `3`). |
 | `unit-grammar` | warning | A property unit is outside the unit grammar. Reported once per unit. |
 
-A geometry whose topology this version does not know is not checked for counts.
+A geometry whose topology this version does not know is not checked for counts, and a property value whose kind
+this version does not know is not checked for its payload.
 
 ## 9. Units
 

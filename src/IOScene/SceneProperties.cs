@@ -1,4 +1,3 @@
-using System.Globalization;
 using System.Text.Json.Serialization;
 
 namespace IOScene;
@@ -87,17 +86,29 @@ public readonly record struct SceneValue([property: JsonPropertyOrder(-2)] Scene
     /// <param name="text">Display string.</param>
     public static SceneValue FromText(string text) => new(SceneValueKind.Text, text);
 
+    /// <summary>
+    /// Compares the five members as they read, so a value that was never set equals a text value with an empty
+    /// string, which is also what it is read back as from a file.
+    /// </summary>
+    /// <param name="other">Value to compare with.</param>
+    /// <returns>True when every member is equal.</returns>
+    public bool Equals(SceneValue other) =>
+        Kind == other.Kind && Text == other.Text && Nullable.Equals(Number, other.Number) && Integer == other.Integer && Unit == other.Unit;
+
+    /// <inheritdoc/>
+    public override int GetHashCode() => HashCode.Combine(Kind, Text, Number, Integer, Unit);
+
     /// <summary>Creates a boolean value.</summary>
     /// <param name="value">The value.</param>
-    /// <param name="text">Display string as the source shows it; <c>Yes</c> or <c>No</c> when null.</param>
-    public static SceneValue FromBoolean(bool value, string? text = null) =>
-        new(SceneValueKind.Boolean, text ?? (value ? "Yes" : "No"), Integer: value ? 1 : 0);
+    /// <param name="text">Display string as the source shows it, such as <c>Yes</c> or <c>TRUE</c>.</param>
+    public static SceneValue FromBoolean(bool value, string text) =>
+        new(SceneValueKind.Boolean, text, Integer: value ? 1 : 0);
 
     /// <summary>Creates an integer value.</summary>
     /// <param name="value">The value.</param>
-    /// <param name="text">Display string as the source shows it; the invariant number when null.</param>
-    public static SceneValue FromInteger(long value, string? text = null) =>
-        new(SceneValueKind.Integer, text ?? value.ToString(CultureInfo.InvariantCulture), Integer: value);
+    /// <param name="text">Display string as the source shows it.</param>
+    public static SceneValue FromInteger(long value, string text) =>
+        new(SceneValueKind.Integer, text, Integer: value);
 
     /// <summary>Creates a real number value.</summary>
     /// <param name="value">The number, in coherent SI when <paramref name="unit"/> is set.</param>

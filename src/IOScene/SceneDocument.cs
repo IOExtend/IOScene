@@ -20,8 +20,14 @@ public sealed partial class SceneDocument
     /// <summary>Value of <see cref="Kind"/> in every scene file.</summary>
     public const string DocumentKind = "ioscene";
 
-    /// <summary>The newest file format this library reads, and the one it writes.</summary>
-    public const int CurrentFormat = 1;
+    /// <summary>
+    /// The newest file format this library reads, and the one it writes. It is a property and not a constant, so a
+    /// program compiled against an older version reads the number of the library it runs with.
+    /// </summary>
+    public static int CurrentFormat => 1;
+
+    // Task levels that fit the 64 levels of nesting that JSON readers allow by default.
+    private const int MaxTaskDepth = 30;
 
 #pragma warning disable CA1822 // Kind and Format are instance members: the serialiser writes and reads them as members of the root.
     /// <summary>

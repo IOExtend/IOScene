@@ -67,9 +67,37 @@ public class ModelTests
     {
         Assert.Equal(string.Empty, default(SceneValue).Text);
         Assert.Equal(string.Empty, new SceneProperty().Value.Text);
-        Assert.Equal(("No", 0L), (SceneValue.FromBoolean(false).Text, SceneValue.FromBoolean(false).Integer));
-        Assert.Equal(("-12", -12L), (SceneValue.FromInteger(-12).Text, SceneValue.FromInteger(-12).Integer));
+        Assert.Equal(new SceneValue(SceneValueKind.Boolean, "No", Integer: 0), SceneValue.FromBoolean(false, "No"));
+        Assert.Equal(new SceneValue(SceneValueKind.Integer, "-12", Integer: -12), SceneValue.FromInteger(-12, "-12"));
         Assert.Equal(new SceneValue(SceneValueKind.Number, "3 m", 3, null, "m"), SceneValue.FromNumber(3, SceneUnits.Metre, "3 m"));
+    }
+
+    [Fact]
+    public void Values_are_equal_when_their_members_read_the_same()
+    {
+        // A value that was never set reads as an empty text, and that is what a file gives back.
+        Assert.Equal(SceneValue.FromText(""), default(SceneValue));
+        Assert.True(default(SceneValue) == SceneValue.FromText(""));
+        Assert.Equal(SceneValue.FromText("").GetHashCode(), default(SceneValue).GetHashCode());
+
+        var unset = new SceneProperty { Name = "P" };
+        var doc = new SceneDocument { PropertySets = { new ScenePropertySet { Id = 1, Properties = { unset } } } };
+        Assert.Equal(unset.Value, SceneJson.Read(SceneJson.Write(doc)).PropertySets[0].Properties[0].Value);
+
+        Assert.NotEqual(SceneValue.FromText("a"), SceneValue.FromText("b"));
+        Assert.NotEqual(SceneValue.FromInteger(1, "1"), SceneValue.FromBoolean(true, "1"));
+        Assert.NotEqual(SceneValue.FromNumber(1, "m", "1"), SceneValue.FromNumber(1, "m2", "1"));
+        Assert.NotEqual(SceneValue.FromNumber(1, null, "1"), SceneValue.FromNumber(2, null, "1"));
+        Assert.Equal(SceneValue.FromNumber(double.NaN, null, "?"), SceneValue.FromNumber(double.NaN, null, "?"));
+    }
+
+    [Fact]
+    public void The_format_number_is_read_from_the_library_at_run_time()
+    {
+        // A constant would be copied into every program compiled against the package.
+        var member = typeof(SceneDocument).GetMember(nameof(SceneDocument.CurrentFormat)).Single();
+        Assert.IsAssignableFrom<System.Reflection.PropertyInfo>(member);
+        Assert.Equal(1, SceneDocument.CurrentFormat);
     }
 
     [Fact]

@@ -25,11 +25,15 @@ public sealed partial class SceneDocument
     /// <item><term>index-range</term><description>A geometry has an index outside its vertices.</description></item>
     /// <item><term>normal-count</term><description>A geometry has normals, but not one per vertex.</description></item>
     /// <item><term>uv-count</term><description>A geometry has texture coordinates, but not one per vertex.</description></item>
-    /// <item><term>not-finite</term><description>A vertex, normal, texture coordinate, instance transform or property number is NaN or infinite.</description></item>
+    /// <item><term>not-finite</term><description>A number of the scene is NaN or infinite.</description></item>
+    /// <item><term>value-payload</term><description>A property value of kind Number has no Number, of kind Integer has no Integer, or of kind Boolean has an Integer other than 0 or 1.</description></item>
+    /// <item><term>task-tree</term><description>A schedule lists a task twice, or a task is inside its own sub-tasks.</description></item>
+    /// <item><term>task-depth</term><description>A schedule nests tasks deeper than 30 levels.</description></item>
     /// </list>
     /// <para>Warnings:</para>
     /// <list type="table">
     /// <item><term>duplicate-source-id</term><description>Two elements of one model share a source id.</description></item>
+    /// <item><term>level-model</term><description>An element names a level of another model.</description></item>
     /// <item><term>ifc-guid</term><description>An IfcGuid is not a 22-character IFC GlobalId.</description></item>
     /// <item><term>unit-grammar</term><description>A property unit is outside the grammar of <see cref="SceneUnits"/>.</description></item>
     /// </list>
@@ -62,12 +66,18 @@ public sealed partial class SceneDocument
         var materials = Ids(Materials.Select(m => m.Id), "Material");
         var textures = Ids(Textures.Select(t => t.Id), "Texture");
         var sets = Ids(PropertySets.Select(s => s.Id), "Property set");
-        var levels = Ids(Levels.Select(l => l.Id), "Level");
+        Ids(Levels.Select(l => l.Id), "Level");
+        var levels = new Dictionary<int, int>(Levels.Count);   // level id -> model id
+        foreach (var l in Levels) levels.TryAdd(l.Id, l.ModelId);
 
         foreach (var e in Elements)
         {
             if (!models.Contains(e.ModelId)) Error("dangling-model", $"Element {e.Id} names model {e.ModelId}.", e.SourceId);
-            if (e.LevelId is int level && !levels.Contains(level)) Error("dangling-level", $"Element {e.Id} names level {level}.", e.SourceId);
+            if (e.LevelId is int level)
+            {
+                if (!levels.TryGetValue(level, out int levelModel)) Error("dangling-level", $"Element {e.Id} names level {level}.", e.SourceId);
+                else if (levelModel != e.ModelId) Warning("level-model", $"Element {e.Id} of model {e.ModelId} names level {level} of model {levelModel}.", e.SourceId);
+            }
             foreach (int set in e.PropertySetIds)
             {
                 if (!sets.Contains(set)) Error("dangling-set", $"Element {e.Id} names property set {set}.", e.SourceId);
@@ -102,14 +112,29 @@ public sealed partial class SceneDocument
         foreach (var m in Materials)
         {
             if (m.TextureId is int texture && !textures.Contains(texture)) Error("dangling-texture", $"Material {m.Id} names texture {texture}.");
+            if (!(double.IsFinite(m.Roughness) && double.IsFinite(m.Metalness))) Error("not-finite", $"Material {m.Id} has a number that is not finite.");
+        }
+        foreach (var t in Textures)
+        {
+            if (!(double.IsFinite(t.ScaleX) && double.IsFinite(t.ScaleY))) Error("not-finite", $"Texture {t.Id} has a scale that is not finite.");
         }
         foreach (var l in Levels)
         {
             if (!models.Contains(l.ModelId)) Error("dangling-model", $"Level {l.Id} names model {l.ModelId}.");
+            if (l.Elevation is double elevation && !double.IsFinite(elevation)) Error("not-finite", $"Level {l.Id} has an elevation that is not finite.");
         }
         foreach (var g in Grids)
         {
             if (!models.Contains(g.ModelId)) Error("dangling-model", $"Grid system '{g.Name}' names model {g.ModelId}.");
+            if (!g.Lines.All(line => IsFinite(line.Start) && IsFinite(line.End) && double.IsFinite(line.Elevation)))
+                Error("not-finite", $"Grid system '{g.Name}' has a line with a number that is not finite.");
+        }
+        foreach (var v in Viewpoints)
+        {
+            var c = v.Camera;
+            if (!(IsFinite(c.Position) && IsFinite(c.Target) && IsFinite(c.Up) && double.IsFinite(c.FieldOfView) && double.IsFinite(c.AspectRatio)
+                && double.IsFinite(c.NearDistance) && double.IsFinite(c.FarDistance)))
+                Error("not-finite", $"Viewpoint '{v.Name}' has a camera with a number that is not finite.");
         }
 
         var units = new HashSet<string>();   // each distinct unit is checked and reported once
@@ -119,24 +144,49 @@ public sealed partial class SceneDocument
             {
                 if (p.Value.Unit is { } unit && units.Add(unit) && !SceneUnits.IsValid(unit)) Warning("unit-grammar", $"Unit '{unit}' is outside the IOScene unit grammar.");
                 if (p.Value.Number is double number && !double.IsFinite(number)) Error("not-finite", $"Property '{p.Name}' of set {s.Id} has a number that is not finite.");
+                // A kind of a later version is not checked.
+                string? payload = p.Value.Kind switch
+                {
+                    SceneValueKind.Number when p.Value.Number is null => "kind Number and no Number",
+                    SceneValueKind.Integer when p.Value.Integer is null => "kind Integer and no Integer",
+                    SceneValueKind.Boolean when p.Value.Integer is not (0 or 1) => "kind Boolean and no Integer of 0 or 1",
+                    _ => null,
+                };
+                if (payload is not null) Error("value-payload", $"Property '{p.Name}' of set {s.Id} has {payload}.");
             }
         }
 
         foreach (var s in Schedules)
         {
             if (s.ModelId is int model && !models.Contains(model)) Error("dangling-model", $"Schedule '{s.Name}' names model {model}.");
-            var tasks = new Stack<SceneTask>(s.Tasks);
-            while (tasks.TryPop(out var task))
+            // Each task object is walked once, so a task inside its own sub-tasks ends the walk.
+            var walked = new HashSet<SceneTask>(ReferenceEqualityComparer.Instance);
+            bool deep = false;
+            var tasks = new Stack<(SceneTask Task, int Depth)>(s.Tasks.Select(task => (task, 1)));
+            while (tasks.TryPop(out var entry))
             {
+                var (task, depth) = entry;
+                if (!walked.Add(task))
+                {
+                    Error("task-tree", $"Task '{task.Id}' is in schedule '{s.Name}' twice or inside its own sub-tasks.");
+                    continue;
+                }
+                if (depth > MaxTaskDepth && !deep)
+                {
+                    deep = true;
+                    Error("task-depth", $"Schedule '{s.Name}' nests tasks deeper than {MaxTaskDepth} levels.");
+                }
+                if (!double.IsFinite(task.Progress)) Error("not-finite", $"Task '{task.Id}' has a progress that is not finite.");
                 foreach (long id in task.ElementIds)
                 {
                     if (!elements.Contains(id)) Error("dangling-element", $"Task '{task.Id}' names element {id}.");
                 }
-                foreach (var child in task.Children) tasks.Push(child);
+                foreach (var child in task.Children) tasks.Push((child, depth + 1));
             }
         }
         foreach (var c in ClashTests.SelectMany(t => t.Clashes))
         {
+            if (!(IsFinite(c.Point) && double.IsFinite(c.Distance))) Error("not-finite", $"Clash '{c.Id}' has a number that is not finite.");
             foreach (long? id in new[] { c.Element1Id, c.Element2Id })
             {
                 if (id is long known && !elements.Contains(known)) Error("dangling-element", $"Clash '{c.Id}' names element {known}.");

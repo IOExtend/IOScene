@@ -63,7 +63,7 @@ public class ValidateTests
     public void Dangling_model()
     {
         Assert.Equal(new[] { "dangling-model" }, Codes(With(d => Element(d, 13).ModelId = 99)));
-        Assert.Equal(new[] { "dangling-model" }, Codes(With(d => d.Levels[2].ModelId = 99)));
+        Assert.Equal(new[] { "dangling-model" }, Codes(With(d => d.Levels.Add(new SceneLevel { Id = 9, ModelId = 99 }))));
         Assert.Equal(new[] { "dangling-model" }, Codes(With(d => d.Grids[0].ModelId = 99)));
         Assert.Equal(new[] { "dangling-model" }, Codes(With(d => d.Schedules[0].ModelId = 99)));
     }
@@ -161,6 +161,125 @@ public class ValidateTests
         Assert.Equal(new[] { "not-finite" }, Codes(With(d => d.Geometries[0].UVs = [.. Enumerable.Repeat(new Vector2d(double.NaN, 0), 4)])));
         Assert.Equal(new[] { "not-finite" }, Codes(With(d => d.Instances[0].Transform = Transform3d.Translate(new(0, 0, double.NegativeInfinity)))));
         Assert.Equal(new[] { "not-finite" }, Codes(With(d => d.PropertySets[0].Properties.Add(new SceneProperty { Name = "Slope", Value = SceneValue.FromNumber(double.NaN, null, "?") }))));
+    }
+
+    public static TheoryData<string> OtherNumbers => new(OtherNumberChanges.Keys);
+
+    // Every double outside geometry, transforms and property values: the writer cannot write any of them when it is not finite.
+    private static readonly Dictionary<string, Action<SceneDocument>> OtherNumberChanges = new()
+    {
+        ["material roughness"] = d => d.Materials[0].Roughness = double.NaN,
+        ["material metalness"] = d => d.Materials[0].Metalness = double.PositiveInfinity,
+        ["texture scale x"] = d => d.Textures[0].ScaleX = double.NaN,
+        ["texture scale y"] = d => d.Textures[0].ScaleY = double.NaN,
+        ["level elevation"] = d => d.Levels[0].Elevation = double.NegativeInfinity,
+        ["grid line start"] = d => d.Grids[0].Lines[0].Start = new(double.NaN, 0, 0),
+        ["grid line end"] = d => d.Grids[0].Lines[1].End = new(0, double.NaN, 0),
+        ["grid line elevation"] = d => d.Grids[0].Lines[0].Elevation = double.NaN,
+        ["camera position"] = d => d.Viewpoints[0].Camera.Position = new(0, 0, double.NaN),
+        ["camera target"] = d => d.Viewpoints[0].Camera.Target = new(double.NaN, 0, 0),
+        ["camera up"] = d => d.Viewpoints[0].Camera.Up = new(double.NaN, 0, 0),
+        ["camera field of view"] = d => d.Viewpoints[1].Camera.FieldOfView = double.PositiveInfinity,
+        ["camera aspect ratio"] = d => d.Viewpoints[0].Camera.AspectRatio = double.NaN,
+        ["camera near distance"] = d => d.Viewpoints[0].Camera.NearDistance = double.NaN,
+        ["camera far distance"] = d => d.Viewpoints[0].Camera.FarDistance = double.PositiveInfinity,
+        ["task progress"] = d => d.Schedules[0].Tasks[0].Children[0].Progress = double.NaN,
+        ["clash point"] = d => d.ClashTests[0].Clashes[1].Point = new(0, double.NaN, 0),
+        ["clash distance"] = d => d.ClashTests[0].Clashes[0].Distance = double.NaN,
+    };
+
+    [Theory]
+    [MemberData(nameof(OtherNumbers))]
+    public void A_number_the_writer_cannot_write_is_reported_as_not_finite(string member)
+    {
+        var doc = With(OtherNumberChanges[member]);
+
+        var issue = Assert.Single(doc.Validate());
+        Assert.Equal(("not-finite", SceneSeverity.Error), (issue.Code, issue.Severity));
+        Assert.Throws<ArgumentException>(() => SceneJson.Write(doc));
+    }
+
+    [Fact]
+    public void An_infinite_number_read_from_a_file_is_reported()
+    {
+        var doc = SceneJson.Read("{\"Kind\":\"ioscene\",\"Format\":1,\"Models\":[{\"Id\":1,\"Key\":\"m\"}],\"Levels\":[{\"Id\":1,\"ModelId\":1,\"Elevation\":1e999}]}");
+        Assert.Equal(new[] { "not-finite" }, Codes(doc));
+    }
+
+    [Fact]
+    public void Value_payload_follows_the_kind()
+    {
+        static SceneDocument Scene(SceneValue value) => With(d => d.PropertySets[0].Properties.Add(new SceneProperty { Name = "P", Value = value }));
+
+        Assert.Equal(new[] { "value-payload" }, Codes(Scene(new SceneValue(SceneValueKind.Number, "1 m"))));
+        Assert.Equal(new[] { "value-payload" }, Codes(Scene(new SceneValue(SceneValueKind.Integer, "3"))));
+        Assert.Equal(new[] { "value-payload" }, Codes(Scene(new SceneValue(SceneValueKind.Boolean, "Yes"))));
+        Assert.Equal(new[] { "value-payload" }, Codes(Scene(new SceneValue(SceneValueKind.Boolean, "Yes", Integer: 7))));
+        Assert.Equal(new[] { "value-payload" }, Codes(Scene(new SceneValue(SceneValueKind.Boolean, "Yes", Number: 1))));
+
+        var issue = Assert.Single(Scene(new SceneValue(SceneValueKind.Number, "1 m")).Validate());
+        Assert.Equal((SceneSeverity.Error, "Property 'P' of set 1 has kind Number and no Number."), (issue.Severity, issue.Message));
+
+        Assert.Empty(Scene(default).Validate());                                             // text, never set
+        Assert.Empty(Scene(new SceneValue((SceneValueKind)8, "later")).Validate());          // a kind of a later version
+        Assert.Empty(Scene(SceneValue.FromBoolean(false, "No")).Validate());
+        Assert.Empty(Scene(SceneValue.FromInteger(long.MinValue, "min")).Validate());
+        Assert.Empty(Scene(SceneValue.FromNumber(0, null, "0")).Validate());
+    }
+
+    [Fact]
+    public void Level_of_another_model_is_a_warning()
+    {
+        // Level 3 belongs to model 2, element 10 to model 1.
+        var issue = Assert.Single(With(d => Element(d, 10).LevelId = 3).Validate());
+        Assert.Equal(("level-model", SceneSeverity.Warning, "uid-1"), (issue.Code, issue.Severity, issue.SourceId));
+        Assert.Equal("Element 10 of model 1 names level 3 of model 2.", issue.Message);
+    }
+
+    private static SceneTask Nested(int levels)
+    {
+        var root = new SceneTask { Id = "1" };
+        var at = root;
+        for (int level = 2; level <= levels; level++)
+        {
+            var child = new SceneTask { Id = level.ToString(System.Globalization.CultureInfo.InvariantCulture) };
+            at.Children.Add(child);
+            at = child;
+        }
+        return root;
+    }
+
+    [Fact]
+    public void A_task_inside_its_own_sub_tasks_is_reported_once_and_the_walk_ends()
+    {
+        var own = new SceneTask { Id = "own" };
+        own.Children.Add(own);
+        var issue = Assert.Single(With(d => d.Schedules[1].Tasks.Add(own)).Validate());
+        Assert.Equal(("task-tree", SceneSeverity.Error), (issue.Code, issue.Severity));
+
+        // A longer way round: a -> b -> c -> a.
+        var a = Nested(3);
+        a.Children[0].Children[0].Children.Add(a);
+        Assert.Equal("task-tree", Assert.Single(With(d => d.Schedules[1].Tasks.Add(a)).Validate()).Code);
+
+        // One task object listed twice is not a tree either.
+        var twice = new SceneTask { Id = "twice" };
+        Assert.Equal(new[] { "task-tree" }, Codes(With(d => d.Schedules[1].Tasks.AddRange([twice, twice]))));
+
+        // The writer cannot write a task that returns to itself.
+        Assert.Throws<System.Text.Json.JsonException>(() => SceneJson.Write(With(d => d.Schedules[1].Tasks.Add(own))));
+    }
+
+    [Fact]
+    public void Task_depth_is_limited_to_what_a_file_can_hold()
+    {
+        var fits = With(d => d.Schedules[1].Tasks.Add(Nested(30)));
+        Assert.Empty(fits.Validate());
+        // 30 task levels are 64 levels of JSON, the default limit of readers.
+        Assert.Empty(System.Text.Json.JsonSerializer.Deserialize<SceneDocument>(SceneJson.Write(fits))!.Validate());
+
+        var issue = Assert.Single(With(d => d.Schedules[1].Tasks.AddRange([Nested(31), Nested(40)])).Validate());
+        Assert.Equal(("task-depth", SceneSeverity.Error), (issue.Code, issue.Severity));
     }
 
     [Theory]

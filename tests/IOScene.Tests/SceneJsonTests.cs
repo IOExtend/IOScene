@@ -68,6 +68,34 @@ public class SceneJsonTests
     }
 
     [Fact]
+    public void The_defaults_of_format_1_are_the_ones_the_contract_lists()
+    {
+        // One object of every type with no member at all. The defaults are part of format 1 (docs/contract.md,
+        // "Required members and defaults"): a change here is a breaking change, not a fix of the expected text.
+        var doc = SceneJson.Read(Head + ",\"Models\":[{}],\"Materials\":[{}],\"Textures\":[{}],\"PropertySets\":[{\"Properties\":[{}]}],\"Levels\":[{}],"
+            + "\"Geometries\":[{}],\"Elements\":[{}],\"Instances\":[{}],\"Grids\":[{\"Lines\":[{}]}],\"Viewpoints\":[{}],"
+            + "\"Schedules\":[{\"Tasks\":[{}]}],\"ClashTests\":[{\"Clashes\":[{}]}]}");
+
+        Assert.Equal(
+            Head + ",\"Title\":\"\","
+            + "\"Models\":[{\"Id\":0,\"Key\":\"\",\"Name\":\"\"}],"
+            + "\"Materials\":[{\"Id\":0,\"Name\":\"\",\"Color\":[200,200,200,255],\"Roughness\":0.5,\"Metalness\":0.1}],"
+            + "\"Textures\":[{\"Id\":0,\"MimeType\":\"image/png\",\"Data\":\"\",\"ScaleX\":1,\"ScaleY\":1}],"
+            + "\"PropertySets\":[{\"Id\":0,\"Name\":\"\",\"Properties\":[{\"Name\":\"\",\"Value\":{\"Kind\":0,\"Text\":\"\"}}]}],"
+            + "\"Levels\":[{\"Id\":0,\"ModelId\":0,\"Name\":\"\"}],"
+            + "\"Geometries\":[{\"Id\":0,\"Topology\":0,\"Vertices\":[],\"Indices\":[]}],"
+            + "\"Elements\":[{\"Id\":0,\"ModelId\":0,\"Kind\":0,\"Name\":\"\",\"Category\":\"\",\"TypeName\":\"\",\"PropertySetIds\":[]}],"
+            + "\"Instances\":[{\"ElementId\":0,\"GeometryId\":0}],"
+            + "\"Grids\":[{\"ModelId\":0,\"Name\":\"Grids\",\"Lines\":[{\"Name\":\"\",\"Start\":[0,0,0],\"End\":[0,0,0],\"Elevation\":0}]}],"
+            + "\"Viewpoints\":[{\"Name\":\"Viewpoint\",\"Camera\":{\"Position\":[10,10,10],\"Target\":[0,0,0],\"Up\":[0,0,1],"
+            + "\"FieldOfView\":0.785,\"AspectRatio\":1.6,\"NearDistance\":0.1,\"FarDistance\":1000,\"Projection\":0}}],"
+            + "\"Schedules\":[{\"Name\":\"\",\"Tasks\":[{\"Id\":\"\",\"Name\":\"\",\"TaskType\":0,"
+            + "\"PlannedStart\":\"0001-01-01T00:00:00+00:00\",\"PlannedEnd\":\"0001-01-01T00:00:00+00:00\",\"Progress\":0,\"ElementIds\":[],\"Children\":[]}]}],"
+            + "\"ClashTests\":[{\"Name\":\"Clash Test\",\"Clashes\":[{\"Id\":\"\",\"Name\":\"\",\"Element1Name\":\"\",\"Element2Name\":\"\",\"Point\":[0,0,0],\"Distance\":0,\"Status\":1}]}]}",
+            SceneJson.Write(doc));
+    }
+
+    [Fact]
     public void A_null_for_a_member_that_is_never_null_is_read_as_missing()
     {
         var doc = SceneJson.Read(Head + ",\"Title\":null,\"Instances\":null,\"Elements\":[{\"Id\":1,\"Name\":null,\"PropertySetIds\":null,\"SourceId\":null}],"
@@ -267,5 +295,123 @@ public class SceneJsonTests
         Assert.StartsWith("{\"Scene\":{\"Kind\":\"ioscene\",\"Format\":1,", json);
         Assert.Contains("\"Vertices\":[0,0,0,1,0,0,1,1,0,0,1,0]", json);
         Assert.Throws<InvalidDataException>(() => JsonSerializer.Deserialize<SceneDocument>("{\"Kind\":\"ioviewer\",\"Format\":1}"));
+    }
+
+    private sealed class Holder
+    {
+        public string Kind { get; set; } = "holder";
+        public string? Note { get; set; }
+        public SceneDocument Scene { get; set; } = new();
+    }
+
+    [Fact]
+    public void A_scene_inside_another_document_follows_the_scene_rules_with_the_options_of_SceneJson()
+    {
+        var options = SceneJson.CreateOptions();
+        const string Json = "{\"Kind\":\"holder\",\"Scene\":{\"Kind\":\"ioscene\",\"Format\":1,\"Title\":null,"
+            + "\"Models\":[{\"Id\":1,\"Key\":\"m\",\"Name\":null}],\"Elements\":null,\"Later\":1}}";
+
+        // Reading: null is a missing member, a null entry of a list is rejected, another kind or format is rejected.
+        var holder = JsonSerializer.Deserialize<Holder>(Json, options)!;
+        Assert.Equal(string.Empty, holder.Scene.Title);
+        Assert.Equal(string.Empty, holder.Scene.Models[0].Name);
+        Assert.Empty(holder.Scene.Elements);
+        Assert.Empty(holder.Scene.Validate());
+        Assert.Throws<InvalidDataException>(() => JsonSerializer.Deserialize<Holder>("{\"Scene\":{\"Kind\":\"ioscene\",\"Format\":1,\"Instances\":[null]}}", options));
+        Assert.Throws<InvalidDataException>(() => JsonSerializer.Deserialize<Holder>("{\"Scene\":{\"Kind\":\"ioscene\",\"Format\":2}}", options));
+
+        // Writing: the scene member has the bytes SceneJson writes for the scene alone; null members are omitted.
+        holder.Scene = GoldenScenes.Everything();
+        Assert.Equal("{\"Kind\":\"holder\",\"Scene\":" + SceneJson.Write(holder.Scene) + "}", JsonSerializer.Serialize(holder, options));
+
+        // 30 task levels, the most a valid scene has, still fit when the scene is one level down.
+        var deepest = new SceneTask { Id = "1" };
+        var at = deepest;
+        for (int level = 2; level <= 30; level++)
+        {
+            at.Children.Add(new SceneTask { Id = "t" });
+            at = at.Children[0];
+        }
+        holder.Scene.Schedules[1].Tasks.Add(deepest);
+        var back = JsonSerializer.Deserialize<Holder>(JsonSerializer.Serialize(holder, options), options)!;
+        Assert.Equal(SceneJson.Write(holder.Scene), SceneJson.Write(back.Scene));
+    }
+
+    [Fact]
+    public void The_options_are_a_copy_that_the_caller_may_change()
+    {
+        var options = SceneJson.CreateOptions();
+        options.WriteIndented = true;
+
+        Assert.NotSame(options, SceneJson.CreateOptions());
+        Assert.False(SceneJson.CreateOptions().WriteIndented);
+        Assert.DoesNotContain('\n', SceneJson.Write(new SceneDocument()));
+        Assert.Contains('\n', JsonSerializer.Serialize(new SceneDocument(), options));
+    }
+
+    [Fact]
+    public void A_document_with_nothing_in_it_writes_the_lists_of_format_1_and_no_other()
+    {
+        // The golden files fix the bytes of format 1, so a list or member added after 0.1.0 is left out of the file
+        // while it is empty or null. When this test fails after such an addition, give the new member that rule in
+        // SceneJson; do not change the expected text.
+        Assert.Equal(
+            "{\"Kind\":\"ioscene\",\"Format\":1,\"Title\":\"\",\"Models\":[],\"Materials\":[],\"Textures\":[],\"PropertySets\":[],\"Levels\":[],"
+            + "\"Geometries\":[],\"Elements\":[],\"Instances\":[],\"Grids\":[],\"Viewpoints\":[],\"Schedules\":[],\"ClashTests\":[]}",
+            SceneJson.Write(new SceneDocument()));
+    }
+
+    [Fact]
+    public void Escaped_and_literal_text_read_the_same()
+    {
+        // Which characters the writer escapes is not part of the format.
+        var literal = SceneJson.Read(Head + ",\"Title\":\"Стена 壁 + ' < > &\"}");
+        var escaped = SceneJson.Read(Head + ",\"Title\":\"\\u0421\\u0442\\u0435\\u043D\\u0430 \\u58C1 \\u002B \\u0027 \\u003C \\u003E \\u0026\"}");
+
+        Assert.Equal("Стена 壁 + ' < > &", literal.Title);
+        Assert.Equal(literal.Title, escaped.Title);
+        Assert.Equal(SceneJson.Write(literal), SceneJson.Write(escaped));
+    }
+
+    [Fact]
+    public void Many_parent_cycles_do_not_slow_the_writer()
+    {
+        // Every element is its own parent, behind one child that comes before its parent. The walk that orders the
+        // elements stops at the first repeated id; walking each cycle to the length of the list took minutes here.
+        var doc = new SceneDocument { Models = { new SceneModel { Id = 1, Key = "m" } } };
+        doc.Elements.Add(new SceneElement { Id = 1, ModelId = 1, ParentId = 2 });
+        for (int id = 2; id <= 200_000; id++) doc.Elements.Add(new SceneElement { Id = id, ModelId = 1, ParentId = id });
+
+        using var stream = new MemoryStream();
+        SceneJson.Write(doc, stream);
+        stream.Position = 0;
+        Assert.Equal(200_000, SceneJson.Read(stream).Elements.Count);
+    }
+
+    private sealed class Counted<T>(int count) : IReadOnlyList<T>
+    {
+        public int Count => count;
+        public T this[int index] => default!;
+        public IEnumerator<T> GetEnumerator() => Enumerable.Repeat(default(T)!, count).GetEnumerator();
+        System.Collections.IEnumerator System.Collections.IEnumerable.GetEnumerator() => GetEnumerator();
+    }
+
+    [Theory]
+    [InlineData("Vertices")]
+    [InlineData("Normals")]
+    [InlineData("UVs")]
+    public void A_geometry_above_the_size_one_JSON_array_can_hold_is_refused_before_anything_is_written(string list)
+    {
+        var geometry = new SceneGeometry { Id = 7, Topology = SceneTopology.Points };
+        if (list == "Vertices") geometry.Vertices = new Counted<Vector3d>(10_000_001);
+        if (list == "Normals") geometry.Normals = new Counted<Vector3d>(10_000_001);
+        if (list == "UVs") geometry.UVs = new Counted<Vector2d>(10_000_001);
+        var doc = new SceneDocument { Geometries = { geometry } };
+
+        using var stream = new MemoryStream();
+        var error = Assert.Throws<ArgumentException>(() => SceneJson.Write(doc, stream));
+        Assert.StartsWith("Geometry 7 has more than 10000000 vertices, the limit of one geometry in scene JSON.", error.Message);
+        Assert.Equal(0, stream.Length);
+        Assert.Throws<ArgumentException>(() => SceneJson.Write(doc));
     }
 }

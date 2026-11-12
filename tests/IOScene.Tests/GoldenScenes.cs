@@ -44,8 +44,8 @@ internal static class GoldenScenes
             {
                 new SceneProperty { Name = "Area", Key = "revit:bip:-1012805", Value = SceneValue.FromNumber(12.5, SceneUnits.SquareMetre, "12.5 m²") },
                 new SceneProperty { Name = "Mark", Value = SceneValue.FromText("W-01") },
-                new SceneProperty { Name = "Structural", Value = SceneValue.FromBoolean(true) },
-                new SceneProperty { Name = "Count", Value = SceneValue.FromInteger(3) },
+                new SceneProperty { Name = "Structural", Value = SceneValue.FromBoolean(true, "Yes") },
+                new SceneProperty { Name = "Count", Value = SceneValue.FromInteger(3, "3") },
                 new SceneProperty { Name = "Ratio", Value = SceneValue.FromNumber(0.25, null, "0.25") },
             },
         });
