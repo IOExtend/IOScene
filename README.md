@@ -40,15 +40,16 @@ dotnet add package IOScene
 ```
 
 A package that depends on IOScene references one 0.x line, because a 0.x minor release may break the API and a patch
-release never does. For the line 0.N the range is `[0.N.0, 0.N+1.0-0)`; the `-0` keeps out the previews of the next
-line:
+release never does. For the line 0.N the range is `[0.N.0, 0.N+1.0-0.0)`; the `-0.0` keeps out the previews of the
+next line:
 
 ```xml
-<PackageReference Include="IOScene" Version="[0.1.0, 0.2.0-0)" />
+<PackageReference Include="IOScene" Version="[0.1.0, 0.2.0-0.0)" />
 ```
 
-`dotnet pack` of a stable package reports NU5104 for this range, because its upper bound `0.2.0-0` is a prerelease
-version; add `<NoWarn>$(NoWarn);NU5104</NoWarn>` to the referencing project.
+`dotnet pack` of a stable package reports NU5104 for this range, because its upper bound `0.2.0-0.0` is a prerelease
+version; add `<NoWarn>$(NoWarn);NU5104</NoWarn>` to the referencing project. The bound has two labels because
+nuget.org refuses a dependency bound such as `0.2.0-0`, whose one prerelease label does not start with a letter.
 
 ## Quick start
 

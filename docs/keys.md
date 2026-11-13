@@ -30,7 +30,7 @@ This file is the registry of the namespaces, of their key formats and of the `Sc
 | Namespace | Owner package | Status |
 |---|---|---|
 | `revit:` | `RvtIO.Scene` | registered; the formats below are fixed from the first release of the package, 0.4.0 |
-| `ifc:` | `IfcIO.Scene` | registered; the formats below are fixed from the first release of the package, 0.11.0 |
+| `ifc:` | `IfcIO.Scene` | registered; the formats below are fixed from the first release of the package, 0.11.1 |
 
 No other namespace is registered. Producers for NWC, DWG and other formats register theirs when they are written.
 
