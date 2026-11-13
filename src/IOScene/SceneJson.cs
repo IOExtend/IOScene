@@ -1,4 +1,5 @@
 using System.Reflection;
+using System.Runtime.ExceptionServices;
 using System.Text.Encodings.Web;
 using System.Text.Json;
 using System.Text.Json.Serialization;
@@ -43,12 +44,13 @@ public static class SceneJson
     /// options add the rest: null members are omitted; an explicit <c>null</c> is read as a missing member for text
     /// (except <see cref="SceneDocument.Kind"/>, which rejects it), lists, objects and nullable members, and makes the
     /// serializer throw <see cref="JsonException"/> for a member of any other type, such as a number, an enum, a math
-    /// value or a date-time; a <c>null</c> inside a list of objects is rejected with
-    /// <see cref="InvalidDataException"/>; and text is escaped as <see cref="Write(SceneDocument, Stream)"/> escapes
-    /// it.
+    /// value or a date-time; a <c>null</c> inside a list of objects, and a scene of another kind or of a newer format,
+    /// are rejected with <see cref="InvalidDataException"/>, also on a runtime without dynamic code; and text is
+    /// escaped as <see cref="Write(SceneDocument, Stream)"/> escapes it.
     /// </summary>
     /// <remarks>
-    /// The rules apply to every type that is read or written with the options, the holder included. Two things that
+    /// The rules apply to every type that is read or written with the options, the holder included; the
+    /// <see cref="IJsonOnDeserialized.OnDeserialized"/> of a type that implements it runs after them. Two things that
     /// <see cref="Write(SceneDocument, Stream)"/> does are not part of them: the elements are written in the order
     /// of the list, not parents first, and the size of a geometry is not checked.
     /// </remarks>
@@ -150,11 +152,6 @@ public static class SceneJson
         {
             throw new InvalidDataException($"Not a readable IOScene document: Kind or Format is missing, or the JSON is damaged. {e.Message}", e);
         }
-        catch (TargetInvocationException e) when (e.InnerException is InvalidDataException rejected)
-        {
-            // Without dynamic code the serialiser calls the setters of Kind and Format through reflection.
-            throw new InvalidDataException(rejected.Message, e);
-        }
     }
 
     // Reading treats an explicit null for a member of a reference type like a missing member, so no member typed as
@@ -167,12 +164,20 @@ public static class SceneJson
         var lists = new List<JsonPropertyInfo>();
         foreach (var property in info.Properties)
         {
-            // Required members (Kind, Format) are left alone: their setters reject a wrong value, null included.
-            if (property.PropertyType.IsValueType || property.IsRequired) continue;
+            // Kind and Format keep their values, null included: their setters reject a wrong one. A member that a
+            // holder marks required follows the rules below like any other.
+            if (info.Type == typeof(SceneDocument) && property.IsRequired)
+            {
+                if (property.Set is { } required) property.Set = Unwrapped(required);
+                continue;
+            }
+            if (property.PropertyType.IsValueType) continue;
             if (property.Set is { } set) property.Set = (target, value) => { if (value is not null) set(target, value); };
             if (property.Get is not null && typeof(IEnumerable<object?>).IsAssignableFrom(property.PropertyType)) lists.Add(property);
         }
         if (lists.Count == 0) return;
+        // The callback of a type that implements IJsonOnDeserialized, which must still run after the check.
+        var own = info.OnDeserialized;
         info.OnDeserialized = target =>
         {
             foreach (var list in lists)
@@ -180,8 +185,23 @@ public static class SceneJson
                 if (list.Get!(target) is IEnumerable<object?> items && items.Contains(null))
                     throw new InvalidDataException($"Not a readable IOScene document: {list.Name} of {info.Type.Name} holds a null entry.");
             }
+            own?.Invoke(target);
         };
     }
+
+    // Without dynamic code the serialiser calls a setter through reflection, which wraps the InvalidDataException of
+    // Kind and Format in a TargetInvocationException; the caller gets the rejection itself.
+    private static Action<object, object?> Unwrapped(Action<object, object?> set) => (target, value) =>
+    {
+        try
+        {
+            set(target, value);
+        }
+        catch (TargetInvocationException e) when (e.InnerException is InvalidDataException rejected)
+        {
+            ExceptionDispatchInfo.Capture(rejected).Throw();
+        }
+    };
 
     // What the writer serialises: the document, checked for the size the reader can take back, with its elements in file order.
     private static SceneDocument Prepared(SceneDocument document)

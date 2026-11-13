@@ -31,3 +31,6 @@ jobs:
           name: packages-${{ matrix.os }}
           path: artifacts/*.nupkg
           if-no-files-found: error
+      # System.Text.Json calls setters through reflection on a runtime without dynamic code.
+      - name: Test without dynamic code
+        run: dotnet test IOScene.slnx -c Release -p:DynamicCodeSupport=false

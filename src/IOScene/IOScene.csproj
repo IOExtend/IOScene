@@ -4,6 +4,9 @@
     <IsPackable>true</IsPackable>
     <PackageId>IOScene</PackageId>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <!-- dotnet pack compares the public API with the first release of the line: a patch release adds or fixes. -->
+    <EnablePackageValidation>true</EnablePackageValidation>
+    <PackageValidationBaselineVersion>0.1.0</PackageValidationBaselineVersion>
   </PropertyGroup>
 
 </Project>

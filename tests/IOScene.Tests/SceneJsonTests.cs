@@ -1,5 +1,6 @@
 using System.Text;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 
 namespace IOScene.Tests;
 
@@ -376,7 +377,9 @@ public class SceneJsonTests
         string json = JsonSerializer.Serialize(new { Scene = GoldenScenes.NoProperties() });
         Assert.StartsWith("{\"Scene\":{\"Kind\":\"ioscene\",\"Format\":1,", json);
         Assert.Contains("\"Vertices\":[0,0,0,1,0,0,1,1,0,0,1,0]", json);
-        Assert.Throws<InvalidDataException>(() => JsonSerializer.Deserialize<SceneDocument>("{\"Kind\":\"ioviewer\",\"Format\":1}"));
+        // Without the options of SceneJson and without dynamic code, the runtime's reflection call wraps the rejection.
+        var rejected = Record.Exception(() => JsonSerializer.Deserialize<SceneDocument>("{\"Kind\":\"ioviewer\",\"Format\":1}"));
+        Assert.IsType<InvalidDataException>(rejected is System.Reflection.TargetInvocationException wrapped ? wrapped.InnerException : rejected);
     }
 
     private sealed class Holder
@@ -417,6 +420,55 @@ public class SceneJsonTests
         holder.Scene.Schedules[1].Tasks.Add(deepest);
         var back = JsonSerializer.Deserialize<Holder>(JsonSerializer.Serialize(holder, options), options)!;
         Assert.Equal(SceneJson.Write(holder.Scene), SceneJson.Write(back.Scene));
+    }
+
+    [Fact]
+    public void A_holder_read_with_the_options_of_SceneJson_gets_InvalidDataException_for_another_kind_or_format()
+    {
+        // Without dynamic code the serializer calls the setters of Kind and Format through reflection, which wraps
+        // their exception; CI runs this test that way too (-p:DynamicCodeSupport=false).
+        var options = SceneJson.CreateOptions();
+        var kind = Assert.Throws<InvalidDataException>(() => JsonSerializer.Deserialize<Holder>("{\"Scene\":{\"Kind\":\"other\",\"Format\":1}}", options));
+        Assert.Contains("Kind is 'other'", kind.Message);
+        Assert.Throws<InvalidDataException>(() => JsonSerializer.Deserialize<Holder>("{\"Scene\":{\"Kind\":\"ioscene\",\"Format\":2}}", options));
+    }
+
+    private sealed class CallbackHolder : IJsonOnDeserialized
+    {
+        public List<string> Notes { get; set; } = [];
+        public SceneDocument Scene { get; set; } = new();
+        [JsonIgnore] public int Calls { get; private set; }
+
+        // Throws another type when it runs before the options have checked the lists for null entries.
+        public void OnDeserialized()
+        {
+            if (Notes.Contains(null!)) throw new InvalidOperationException("OnDeserialized ran before the check for null entries.");
+            Calls++;
+        }
+    }
+
+    [Fact]
+    public void The_holders_own_IJsonOnDeserialized_still_runs_with_the_options_of_SceneJson()
+    {
+        var options = SceneJson.CreateOptions();
+        var holder = JsonSerializer.Deserialize<CallbackHolder>("{\"Notes\":[\"a\"],\"Scene\":{\"Kind\":\"ioscene\",\"Format\":1}}", options)!;
+        Assert.Equal(1, holder.Calls);
+        // The options still reject a null entry in a list of the holder, before the callback runs.
+        Assert.Throws<InvalidDataException>(() => JsonSerializer.Deserialize<CallbackHolder>("{\"Notes\":[null]}", options));
+    }
+
+    private sealed class RequiredHolder
+    {
+        [JsonRequired] public List<string> Notes { get; set; } = ["kept"];
+    }
+
+    [Fact]
+    public void A_member_the_holder_marks_required_follows_the_rules_of_the_options()
+    {
+        var options = SceneJson.CreateOptions();
+        Assert.Equal(new[] { "kept" }, JsonSerializer.Deserialize<RequiredHolder>("{\"Notes\":null}", options)!.Notes);
+        Assert.Throws<InvalidDataException>(() => JsonSerializer.Deserialize<RequiredHolder>("{\"Notes\":[\"a\",null]}", options));
+        Assert.Throws<JsonException>(() => JsonSerializer.Deserialize<RequiredHolder>("{}", options));
     }
 
     [Fact]

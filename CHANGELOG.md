@@ -6,12 +6,29 @@ and the project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## [Unreleased]
 
+## [0.1.1] - 2026-11-13
+
 ### Fixed
+- `SceneJson.CreateOptions()`: a scene of another kind or of a newer format inside a document read with these options
+  is rejected with `InvalidDataException` also on a runtime without dynamic code; before, it came as a
+  `TargetInvocationException` around it. `SceneJson.Read` and `SceneJson.Load` threw `InvalidDataException` there
+  already; it is now the setter's exception itself, as with dynamic code, without the `TargetInvocationException` as
+  its inner exception.
+- `SceneJson.CreateOptions()`: a type read with these options that implements `IJsonOnDeserialized` and has a member
+  that is a list of objects or strings gets its `OnDeserialized` call again, after the check for null entries; the
+  options replaced it before.
+- `SceneJson.CreateOptions()`: a member that a holder marks required (`[JsonRequired]` or `required`) follows the
+  rules of the options like any other member, as the documentation of the method says: an explicit `null` is read as
+  a missing member, and a `null` entry of its list is rejected. 0.1.0 left such members alone.
 - README and `docs/contract.md`: a package that depends on IOScene references `[0.N.0, 0.N+1.0-0.0)` instead of
   `[0.N.0, 0.N+1.0-0)`. nuget.org refuses a package whose dependency bound is `0.2.0-0`, because a prerelease label of
   one part must start with a letter there; `0.2.0-0.0` has two parts and keeps out every preview of 0.2.0 except
   `0.2.0-0`, which IOScene does not publish.
 - `docs/keys.md`: the `ifc:` formats are fixed from `IfcIO.Scene` 0.11.1, its first release; nuget.org refused 0.11.0.
+
+### Changed
+- `dotnet pack` compares the public API with 0.1.0 (package validation) and fails on a removed or changed member. CI
+  also runs the tests as a runtime without dynamic code does (`-p:DynamicCodeSupport=false`).
 
 ## [0.1.0] - 2026-11-13
 

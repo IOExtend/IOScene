@@ -275,7 +275,9 @@ line (nuget.org refuses the shorter bound `-0` in a dependency). From 1.0 the ra
   a saving, not a cure: text doubles dominate. The cure for size is a new encoding (item 4 of section 5), which is
   why `Format` is not tied to a breaking package version.
 - The converters of the math values are attached to the types, so any `System.Text.Json` serialisation of a scene
-  writes them as arrays, and `Kind` and `Format` are checked whoever reads the scene. The other rules of this section
+  writes them as arrays, and `Kind` and `Format` are checked whoever reads the scene. With the options of `SceneJson`
+  a wrong value is an `InvalidDataException` on any runtime; without them, a runtime without dynamic code wraps it in
+  a `TargetInvocationException`. The other rules of this section
   (null members omitted, the reader rules, the escaping) belong to `SceneJson`. A document of another kind that holds
   a scene as a member gets them from `SceneJson.CreateOptions()`, which returns serializer options for the whole
   document. Such a document lists the elements in the order of the list, not parents first.
