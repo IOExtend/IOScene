@@ -68,6 +68,10 @@ handled before. If ignoring it gives wrong output, it is a break.
 **Breaking changes** (a 0.N+1 minor release; never after 1.0 without 2.0): rename, retype or remove a member; change
 units, defaults or the meaning of an existing member; reorder enum values; change a positional record signature.
 
+`dotnet pack` compares the public API with the first release of the line (`PackageValidationBaselineVersion` in
+`src/IOScene/IOScene.csproj`, 0.1.0 for the 0.1 line) and fails on a removed or changed member. The commit that
+starts a breaking minor removes the baseline; the first release of the new line becomes the next baseline.
+
 **Break procedure.** A breaking minor is tagged only when the pull request of every package that depends on IOScene
 (the `<Engine>.Scene` packages and the consumers) is ready against the same preview on a local feed. Then all tags go
 out in one session, in release order: IOScene, each engine, the consumers. Previews iterate on the local feed;

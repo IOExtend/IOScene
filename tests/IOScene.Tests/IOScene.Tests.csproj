@@ -20,7 +20,6 @@
   <ItemGroup>
     <ProjectReference Include="..\..\src\IOScene\IOScene.csproj" />
   </ItemGroup>
-
   <!-- Golden files of every released format; they are read from the output folder. -->
   <ItemGroup>
     <None Include="..\golden\**\*.json" Link="golden\%(RecursiveDir)%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
