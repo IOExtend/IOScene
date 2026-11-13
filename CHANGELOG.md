@@ -2,9 +2,16 @@
 
 All notable changes are documented here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 and the project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html) with one rule for versions before
-1.0: a patch release is additive, and a minor release may break the API and the file format.
+1.0: a patch release adds or fixes, and a minor release may break the API and the file format.
 
 ## [Unreleased]
+
+### Fixed
+- README and `docs/contract.md`: a package that depends on IOScene references `[0.N.0, 0.N+1.0-0.0)` instead of
+  `[0.N.0, 0.N+1.0-0)`. nuget.org refuses a package whose dependency bound is `0.2.0-0`, because a prerelease label of
+  one part must start with a letter there; `0.2.0-0.0` has two parts and keeps out every preview of 0.2.0 except
+  `0.2.0-0`, which IOScene does not publish.
+- `docs/keys.md`: the `ifc:` formats are fixed from `IfcIO.Scene` 0.11.1, its first release; nuget.org refused 0.11.0.
 
 ## [0.1.0] - 2026-11-13
 
