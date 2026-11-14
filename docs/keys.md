@@ -31,8 +31,9 @@ This file is the registry of the namespaces, of their key formats and of the `Sc
 |---|---|---|
 | `revit:` | `RvtIO.Scene` | registered; the formats below are fixed from the first release of the package, 0.4.0 |
 | `ifc:` | `IfcIO.Scene` | registered; the formats below are fixed from the first release of the package, 0.11.1 |
+| `nwc:` | `NwcIO.Scene` | registered; the formats below are fixed from the first release of the package, 0.12.0 |
 
-No other namespace is registered. Producers for NWC, DWG and other formats register theirs when they are written.
+No other namespace is registered. Producers for DWG and other formats register theirs when they are written.
 
 ### `revit:`
 
@@ -55,6 +56,17 @@ registered when `RvtIO.Scene` first writes them; that is an addition.
 The property sets of an IFC type object, when they are read, use the same `ifc:` key form and come after the
 occurrence sets.
 
+### `nwc:`
+
+| Key | Used on | Meaning |
+|---|---|---|
+| `nwc:<TabInternalName>` | property set | A Navisworks property tab by its internal name, for tabs whose internal name the Revit exporter fixes: `nwc:LcRevitData_Element`, `nwc:LcRevitData_Type`, `nwc:LcRevitMaterialProperties`, and `nwc:LcRevitId` (the element id). |
+| `nwc:<TabInternalName>.<InternalName>` | property | A property of such a tab by its internal name, for names that do not change with language or a renamed parameter: built-in Revit parameters `lcldrevit_parameter_-<id>` (`nwc:LcRevitData_Element.lcldrevit_parameter_-1001107`), the exporter's `LcRevitPropertyElement{Category,CategoryId,Family,Id,Name,Type}`, Revit material asset names `revit_<Identifier>`, and `LcRevitId`. |
+
+Other tabs and properties (references to other elements, rooms, and parameters whose internal name the exporter derives
+from their display name) have no key. Keys for them are registered when `NwcIO.Scene` first writes them; that is an
+addition.
+
 ## `SourceFormat` values
 
 `SceneModel.SourceFormat` is the registered id of the format of the content, not of the container: `ifc` covers
@@ -64,7 +76,7 @@ occurrence sets.
 |---|---|---|
 | `rvt` | Revit project | `RvtIO.Scene` |
 | `ifc` | IFC STEP file, also zipped (`.ifczip`) | `IfcIO.Scene` |
-| `nwc` | Navisworks cache | `NwcIO.Scene` (later) |
+| `nwc` | Navisworks cache | `NwcIO.Scene` |
 | `dwg` | DWG drawing | `DwgIO.Scene` (later) |
 | `glb` | binary glTF | `IOScene.Formats` (later) |
 | `obj` | Wavefront OBJ | `IOScene.Formats` (later) |
