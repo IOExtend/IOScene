@@ -6,6 +6,9 @@ and the project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## [Unreleased]
 
+### Changed
+- `docs/keys.md`: the namespace `nwc:` is registered for `NwcIO.Scene`; its formats are fixed from the first release of the package, 0.12.0. The `nwc` source format names `NwcIO.Scene` as its producer.
+
 ## [0.1.1] - 2026-11-13
 
 ### Fixed
