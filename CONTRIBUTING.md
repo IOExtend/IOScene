@@ -51,7 +51,7 @@ Do not commit a `nuget.config` that points to a local feed.
 
 `src/IOScene.Formats` and `src/IOCoord` are optional preview projects that consume the public IOScene 0.1 API.
 Their tests are in `tests/IOScene.Tools.Tests`. Packing the solution creates local preview packages.
-Core release tags publish the IOScene package. The optional previews have their own release setup pending.
+Core release tags publish the IOScene package. Tags with the `tools-v` prefix release the two tools packages together.
 
 ## Changing the contract
 
@@ -138,6 +138,12 @@ contains a hyphen. The release notes are the section of `CHANGELOG.md` for the v
 `## [Unreleased]` to `## [<version>] - <date>` (ISO date) and start a new empty `## [Unreleased]` above it. The
 workflow stops before it publishes anything when the tagged commit has no section for the version. The NuGet policy
 must name this repository, `release.yml`, the configured NuGet profile and the `IOScene*` package pattern.
+
+For the optional tools, set both project versions and add the matching entry in
+[`docs/tools-changelog.md`](docs/tools-changelog.md). A tag such as `tools-v0.1.0-preview.1` packs
+`IOScene.Formats` and `IOCoord` only. Both package IDs must have Trusted Publishing policies for this repository and
+`release.yml` that allow the first publication of each package. A local release build can be verified with
+`./tools/pack-release.ps1 -ToolsVersion 0.1.0-preview.1` after building the solution in Release.
 
 IOScene targets the lowest framework that any package depending on it targets, and drops a framework last.
 
