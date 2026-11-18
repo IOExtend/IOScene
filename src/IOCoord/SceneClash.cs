@@ -3,7 +3,7 @@ using IOScene;
 namespace IOCoord;
 
 /// <summary>Finds surface intersections between the triangle meshes of scene elements.</summary>
-public static class SceneClash
+public static partial class SceneClash
 {
     // The same rounding tolerance is used for the bounds, plane distances and edge distances.
     private const double Tolerance = 1e-9;
@@ -18,7 +18,11 @@ public static class SceneClash
     /// <remarks>Tests triangle surfaces in metres. A contact tolerance of one nanometre covers rounding.
     /// Penetration depth, clearance and solids enclosed without surface contact are outside this query.</remarks>
     public static SceneClashTest FindSurfaceIntersections(SceneDocument scene, IEnumerable<long> first, IEnumerable<long> second,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default) =>
+        Find(scene, first, second, null, cancellationToken);
+
+    private static SceneClashTest Find(SceneDocument scene, IEnumerable<long> first, IEnumerable<long> second,
+        double? maxClearance, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(scene);
         ArgumentNullException.ThrowIfNull(first);
@@ -72,19 +76,20 @@ public static class SceneClash
             }
         }
 
-        var test = new SceneClashTest { Name = "Surface intersections" };
+        var test = new SceneClashTest { Name = maxClearance is null ? "Surface intersections" : "Surface clearances" };
         if (leftTriangles.Count == 0 || rightTriangles.Count == 0) return test;
         Triangle[] aTriangles = leftTriangles.ToArray(), bTriangles = rightTriangles.ToArray();
         var aRoot = Build(aTriangles, 0, aTriangles.Length, cancellationToken);
         var bRoot = Build(bTriangles, 0, bTriangles.Length, cancellationToken);
-        var contacts = new Dictionary<(long First, long Second), Vector3d>();
+        double margin = Math.Max(Tolerance, maxClearance ?? 0);
+        var contacts = new Dictionary<(long First, long Second), (Vector3d Point, double? Distance)>();
         var pending = new Stack<(Node First, Node Second)>();
         pending.Push((aRoot, bRoot));
         while (pending.TryPop(out var pair))
         {
             cancellationToken.ThrowIfCancellationRequested();
             var (a, b) = pair;
-            if (!Overlaps(a.Bounds, b.Bounds)) continue;
+            if (!Overlaps(a.Bounds, b.Bounds, margin)) continue;
             if (a.First is not null && (b.First is null || a.Count >= b.Count))
             {
                 pending.Push((a.First, b));
@@ -103,16 +108,29 @@ public static class SceneClash
                     for (int j = b.Start; j < b.Start + b.Count; j++)
                     {
                         var two = bTriangles[j];
-                        if (one.ElementId == two.ElementId || !Overlaps(one.Bounds, two.Bounds)) continue;
+                        if (one.ElementId == two.ElementId || !Overlaps(one.Bounds, two.Bounds, margin)) continue;
                         var key = (Math.Min(one.ElementId, two.ElementId), Math.Max(one.ElementId, two.ElementId));
-                        if (!contacts.ContainsKey(key) && Contact(one, two) is { } point)
-                            contacts.Add(key, point);
+                        bool found = contacts.TryGetValue(key, out var best);
+                        if (found && (maxClearance is null || best.Distance == 0)) continue;
+                        if (best.Distance is double distance && !Overlaps(one.Bounds, two.Bounds, Math.Max(Tolerance, distance))) continue;
+
+                        if ((maxClearance is null || Overlaps(one.Bounds, two.Bounds, Tolerance))
+                            && Contact(one, two) is { } point)
+                        {
+                            contacts[key] = (point, maxClearance is null ? null : 0);
+                        }
+                        else if (maxClearance is double limit)
+                        {
+                            var clearance = ClosestBetween(one, two);
+                            if (clearance.Distance <= limit && (!found || clearance.Distance < best.Distance))
+                                contacts[key] = clearance;
+                        }
                     }
                 }
             }
         }
 
-        foreach (var (key, point) in contacts.OrderBy(pair => pair.Key))
+        foreach (var (key, contact) in contacts.OrderBy(pair => pair.Key))
         {
             string firstName = elements[key.First].Name;
             string secondName = elements[key.Second].Name;
@@ -124,7 +142,8 @@ public static class SceneClash
                 Element2Id = key.Second,
                 Element1Name = firstName,
                 Element2Name = secondName,
-                Point = point,
+                Point = contact.Point,
+                Distance = contact.Distance,
                 Status = SceneClashStatus.New,
             });
         }
@@ -146,10 +165,10 @@ public static class SceneClash
         return new(bounds, start, count, left, right);
     }
 
-    private static bool Overlaps(BoundingBox3d a, BoundingBox3d b) =>
-        a.Min.X <= b.Max.X + Tolerance && b.Min.X <= a.Max.X + Tolerance
-        && a.Min.Y <= b.Max.Y + Tolerance && b.Min.Y <= a.Max.Y + Tolerance
-        && a.Min.Z <= b.Max.Z + Tolerance && b.Min.Z <= a.Max.Z + Tolerance;
+    private static bool Overlaps(BoundingBox3d a, BoundingBox3d b, double margin) =>
+        a.Min.X <= b.Max.X + margin && b.Min.X <= a.Max.X + margin
+        && a.Min.Y <= b.Max.Y + margin && b.Min.Y <= a.Max.Y + margin
+        && a.Min.Z <= b.Max.Z + margin && b.Min.Z <= a.Max.Z + margin;
 
     private static Vector3d? Contact(Triangle a, Triangle b) =>
         EdgeContact(a.A, a.B, b) ?? EdgeContact(a.B, a.C, b) ?? EdgeContact(a.C, a.A, b)
