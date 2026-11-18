@@ -3,13 +3,35 @@
     Packs release assets into artifacts: binary archive of the library, source zip, NuGet packages and SHA256SUMS.txt.
 #>
 param(
-    [string]$Output = (Join-Path $PSScriptRoot '..\artifacts')
+    [string]$Output = (Join-Path $PSScriptRoot '..\artifacts'),
+    [ValidateNotNullOrEmpty()]
+    [string]$ToolsVersion
 )
 
 $ErrorActionPreference = 'Stop'
 Set-StrictMode -Version Latest
 
 $root = (Resolve-Path (Join-Path $PSScriptRoot '..')).Path
+
+function Invoke-DotNet {
+    & dotnet @args
+    if ($LASTEXITCODE -ne 0) { throw "dotnet $($args -join ' ') failed with exit code $LASTEXITCODE" }
+}
+
+if ($PSBoundParameters.ContainsKey('ToolsVersion')) {
+    $projects = @('IOScene.Formats', 'IOCoord') | ForEach-Object { Join-Path $root "src/$_/$_.csproj" }
+    foreach ($project in $projects) {
+        $projectVersion = Invoke-DotNet msbuild $project '-getProperty:Version' -nologo
+        if ($projectVersion.Trim() -cne $ToolsVersion) {
+            throw "The tools release tag must match the version of both projects: $project uses $projectVersion."
+        }
+    }
+    foreach ($project in $projects) {
+        Invoke-DotNet pack $project -c Release --no-build -o $Output
+    }
+    return
+}
+
 $props = [xml](Get-Content -LiteralPath (Join-Path $root 'Directory.Build.props') -Raw)
 $versionNode = $props.SelectSingleNode('/Project/PropertyGroup/Version')
 if (-not $versionNode) {
@@ -23,11 +45,6 @@ $Output = (Resolve-Path $Output).Path
 $stage = Join-Path $Output 'stage'
 if (Test-Path -LiteralPath $stage) { Remove-Item -LiteralPath $stage -Recurse -Force }
 New-Item -ItemType Directory -Force -Path $stage | Out-Null
-
-function Invoke-DotNet {
-    & dotnet @args
-    if ($LASTEXITCODE -ne 0) { throw "dotnet $($args -join ' ') failed with exit code $LASTEXITCODE" }
-}
 
 function New-Zip([string]$SourceDir, [string]$ZipPath) {
     if (Test-Path -LiteralPath $ZipPath) { Remove-Item -LiteralPath $ZipPath }

@@ -2,7 +2,7 @@ name: Release
 
 on:
   push:
-    tags: ['v*']
+    tags: ['v*', 'tools-v*']
 
 permissions:
   contents: write
@@ -20,6 +20,7 @@ jobs:
             8.0.x
             10.0.x
       - name: Validate release version
+        if: startsWith(github.ref_name, 'v')
         shell: pwsh
         run: |
           $version = dotnet msbuild src/IOScene/IOScene.csproj -getProperty:Version -nologo
@@ -31,10 +32,12 @@ jobs:
       - name: Extract release notes
         shell: pwsh
         run: |
-          $version = $env:GITHUB_REF_NAME.Substring(1)
-          $changelog = Get-Content -LiteralPath CHANGELOG.md -Encoding utf8
+          $toolsRelease = $env:GITHUB_REF_NAME.StartsWith('tools-v', [StringComparison]::Ordinal)
+          $version = if ($toolsRelease) { $env:GITHUB_REF_NAME.Substring(7) } else { $env:GITHUB_REF_NAME.Substring(1) }
+          $changelogPath = if ($toolsRelease) { 'docs/tools-changelog.md' } else { 'CHANGELOG.md' }
+          $changelog = Get-Content -LiteralPath $changelogPath -Encoding utf8
           $start = [array]::FindIndex($changelog, [Predicate[string]] { param($line) $line.StartsWith("## [$version]") })
-          if ($start -lt 0) { throw "CHANGELOG.md has no entry for $version" }
+          if ($start -lt 0) { throw "$changelogPath has no entry for $version" }
           $notes = @()
           for ($i = $start + 1; $i -lt $changelog.Count -and -not $changelog[$i].StartsWith('## ['); $i++) { $notes += $changelog[$i] }
           $notes | Set-Content -LiteralPath release-notes.md -Encoding utf8
@@ -43,7 +46,12 @@ jobs:
       - run: dotnet test IOScene.slnx -c Release --no-build
       - name: Pack release
         shell: pwsh
-        run: ./tools/pack-release.ps1
+        run: |
+          if ($env:GITHUB_REF_NAME.StartsWith('tools-v', [StringComparison]::Ordinal)) {
+            ./tools/pack-release.ps1 -ToolsVersion $env:GITHUB_REF_NAME.Substring(7)
+          } else {
+            ./tools/pack-release.ps1
+          }
       - uses: actions/upload-artifact@v7
         with:
           name: packages
@@ -67,10 +75,9 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          $version = $env:GITHUB_REF_NAME.Substring(1)
           $files = @(Get-ChildItem artifacts -File | ForEach-Object { $_.FullName })
           # A version with a hyphen is a prerelease.
           $flags = @()
-          if ($version.Contains('-')) { $flags += '--prerelease' }
+          if ($env:GITHUB_REF_NAME -match '^(tools-)?v[^-]+-') { $flags += '--prerelease' }
           gh release create $env:GITHUB_REF_NAME --title $env:GITHUB_REF_NAME --notes-file release-notes.md @flags @files
           if ($LASTEXITCODE -ne 0) { throw "gh release create failed with exit code $LASTEXITCODE" }
