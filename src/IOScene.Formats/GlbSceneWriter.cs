@@ -12,19 +12,7 @@ public static class GlbSceneWriter
     public static void Save(SceneDocument scene, string path)
     {
         ArgumentNullException.ThrowIfNull(scene);
-        ArgumentException.ThrowIfNullOrWhiteSpace(path);
-        string fullPath = Path.GetFullPath(path);
-        string temporaryPath = Path.Combine(Path.GetDirectoryName(fullPath)!, $".{Guid.NewGuid():N}.glb.tmp");
-        var file = new FileStream(temporaryPath, FileMode.CreateNew, FileAccess.Write, FileShare.None);
-        try
-        {
-            using (file) Write(scene, file);
-            File.Move(temporaryPath, fullPath, overwrite: true);
-        }
-        finally
-        {
-            File.Delete(temporaryPath);
-        }
+        SceneFormatFile.Replace(path, "glb", file => Write(scene, file));
     }
 
     /// <summary>Writes the scene to an open stream. The stream remains open.</summary>
