@@ -1,7 +1,16 @@
 # Optional IOScene tools
 
-`IOScene.Formats` and `IOCoord` consume the public IOScene 0.1 API. They ship separately from the scene contract
-and do not depend on a source-format engine. Both are available as local preview packages from this solution.
+`IOScene` defines the scene data and stores coordination results. `IOCoord` computes those results and consumes
+the public IOScene 0.1 API. `IOScene.Formats` uses the same API for GLB and OBJ. The three projects share this
+repository and can be installed separately. Both tools depend on IOScene, and IOScene has no dependencies.
+
+The [tools preview release](https://github.com/IOExtend/IOScene/releases/tag/tools-v0.1.0-preview.1) includes both
+packages. Install the tool your project uses:
+
+```sh
+dotnet add package IOCoord --version 0.1.0-preview.1
+dotnet add package IOScene.Formats --version 0.1.0-preview.1
+```
 
 ## GLB and OBJ
 
@@ -82,7 +91,7 @@ the coordinates stored in the scene.
 topics. The caller supplies the author and creation timestamp. Components use the scene's IFC GlobalIds. A viewpoint
 with components carries selection and visibility. Camera positions and snapshots are outside this initial exporter.
 
-## Preview packages
+## Build packages locally
 
 ```sh
 dotnet pack IOScene.slnx -c Release -o ./artifacts
