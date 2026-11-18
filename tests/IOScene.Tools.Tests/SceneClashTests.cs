@@ -94,4 +94,85 @@ public class SceneClashTests
         Assert.Throws<ArgumentOutOfRangeException>(() =>
             SceneClash.FindSurfaceClearances(new SceneDocument(), [], [], limit));
     }
+
+    [Fact]
+    public void HardClashes_UseOnlyBoundsOfContactingInstancesForTheDepth()
+    {
+        var scene = new SceneDocument();
+        var first = AddBox(scene, "Wall", Vector3d.Zero, 2);
+        var second = AddBox(scene, "Column", new(1.5, 0.25, 0.25), 2);
+        scene.Instances.Add(new SceneInstance
+        {
+            ElementId = second.Id,
+            GeometryId = scene.Geometries[1].Id,
+            Transform = Transform3d.Translate(new(-12, 0, 0)),
+        });
+
+        var clash = Assert.Single(SceneClash.FindHardClashes(scene, [first.Id], [second.Id], 0.5).Clashes);
+        Assert.Equal(-0.5, clash.Distance);
+        Assert.Empty(SceneClash.FindHardClashes(scene, [first.Id], [second.Id], 0.51).Clashes);
+        Assert.Equal(-0.5, Assert.Single(SceneClash.FindBoundingBoxOverlaps(scene, [first.Id], [second.Id]).Clashes).Distance);
+    }
+
+    [Fact]
+    public void HardClashes_RetainZeroDepthSurfaceContacts()
+    {
+        var scene = new SceneDocument();
+        var first = AddBox(scene, "Wall", Vector3d.Zero, 2);
+        var second = AddBox(scene, "Column", new(2, 0, 0), 2);
+
+        var clash = Assert.Single(SceneClash.FindHardClashes(scene, [first.Id], [second.Id], 0.1).Clashes);
+        Assert.Equal(0, clash.Distance);
+        Assert.Equal(2, clash.Point.X);
+    }
+
+    [Fact]
+    public void BoundingBoxOverlaps_IncludeNestedBoxesWithNoSurfaceContact()
+    {
+        var scene = new SceneDocument();
+        var first = AddBox(scene, "Outer", Vector3d.Zero, 4);
+        var second = AddBox(scene, "Inner", new(1, 1, 1), 1);
+        var disjoint = AddBox(scene, "Outside", new(12, 0, 0), 1);
+
+        Assert.Empty(SceneClash.FindHardClashes(scene, [first.Id], [second.Id, disjoint.Id]).Clashes);
+        var overlap = Assert.Single(SceneClash.FindBoundingBoxOverlaps(scene, [first.Id], [second.Id, disjoint.Id]).Clashes);
+        Assert.Equal(second.Id, overlap.Element2Id);
+        Assert.Equal(new Vector3d(1.5, 1.5, 1.5), overlap.Point);
+        Assert.Equal(-1, overlap.Distance);
+    }
+
+    [Fact]
+    public void Duplicates_ComparePlacedVerticesAndEffectiveIndexOrder()
+    {
+        var scene = new SceneDocument();
+        Vector3d[] vertices = [Vector3d.Zero, Vector3d.UnitX, Vector3d.UnitY];
+        var original = scene.AddMesh("Original", vertices, [0, 1, 2]);
+        var matching = scene.AddMesh("Matching", vertices, []);
+        var reordered = scene.AddMesh("Reordered", vertices, [0, 2, 1]);
+        var points = scene.AddMesh("Points", vertices, [0, 1, 2]);
+        scene.Geometries[3].Topology = SceneTopology.Points;
+        scene.Instances[1].Transform = Transform3d.Translate(new(0, 0, 0.125));
+        long[] selection = [original.Id, matching.Id, reordered.Id, points.Id];
+
+        var duplicate = Assert.Single(SceneClash.FindDuplicates(scene, [original.Id], selection, 0.125).Clashes);
+        Assert.Equal(matching.Id, duplicate.Element2Id);
+        Assert.Equal(0, duplicate.Distance);
+        Assert.Empty(SceneClash.FindDuplicates(scene, [original.Id], selection, 0.124).Clashes);
+    }
+
+    private static SceneElement AddBox(SceneDocument scene, string name, Vector3d position, double side)
+    {
+        var element = scene.AddMesh(name,
+        [
+            new(0, 0, 0), new(side, 0, 0), new(side, side, 0), new(0, side, 0),
+            new(0, 0, side), new(side, 0, side), new(side, side, side), new(0, side, side),
+        ],
+        [
+            0, 2, 1, 0, 3, 2, 4, 5, 6, 4, 6, 7,
+            0, 1, 5, 0, 5, 4, 1, 2, 6, 1, 6, 5,
+            2, 3, 7, 2, 7, 6, 3, 0, 4, 3, 4, 7,
+        ]);
+        scene.Instances[^1].Transform = Transform3d.Translate(position);
+        return element;
+    }
 }

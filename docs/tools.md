@@ -49,8 +49,16 @@ box hierarchy narrows the triangle pairs, and a surface check finds a contact po
 pair. It returns a `SceneClashTest` for export or review, with a contact tolerance of one nanometre.
 `SceneClash.FindSurfaceClearances` returns the shortest gap between the placed triangle surfaces of each
 element pair within an inclusive limit in metres. The result includes the distance and the midpoint of the
-gap. Surface contacts report zero using the same tolerance. Solid containment and penetration depth require
-different queries.
+gap. Surface contacts report zero using the same tolerance.
+
+`SceneClash.FindHardClashes` checks triangle contact and estimates depth from the minimum side of the overlap
+of the two contacting mesh bounds, as in NwcIO. It reports negative depth in metres, skips positive depths
+below the requested minimum, and keeps zero-depth contacts. `SceneClash.FindBoundingBoxOverlaps` uses the same
+overlap metric and reports the centre of overlapping instance boxes without checking their surfaces. A box
+overlap can include empty space. Exact depth and closed-solid containment are outside these queries.
+
+`SceneClash.FindDuplicates` compares placed vertices and effective index order within a tolerance in metres.
+It reports a pair when any two of its instances match, independent of material and display name.
 
 `SceneDiff.Compare` matches elements by model key and source id. It compares names and types, ordered property sets,
 and ordered vertices and indices in scene coordinates. It reports elements without an identity separately and refuses

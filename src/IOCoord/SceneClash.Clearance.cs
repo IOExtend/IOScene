@@ -16,13 +16,11 @@ public static partial class SceneClash
     public static SceneClashTest FindSurfaceClearances(SceneDocument scene, IEnumerable<long> first, IEnumerable<long> second,
         double maxClearanceMetres, CancellationToken cancellationToken = default)
     {
-        ArgumentOutOfRangeException.ThrowIfNegative(maxClearanceMetres);
-        if (!double.IsFinite(maxClearanceMetres))
-            throw new ArgumentOutOfRangeException(nameof(maxClearanceMetres), "Clearance must be finite.");
-        return Find(scene, first, second, maxClearanceMetres, cancellationToken);
+        ValidateDistance(maxClearanceMetres, nameof(maxClearanceMetres));
+        return Find(scene, first, second, Query.Clearance, maxClearanceMetres, cancellationToken);
     }
 
-    private static (Vector3d Point, double Distance) ClosestBetween(Triangle a, Triangle b)
+    private static (Vector3d Point, double Distance) ClosestBetween(Primitive a, Primitive b)
     {
         ReadOnlySpan<Vector3d> first = [a.A, a.B, a.C];
         ReadOnlySpan<Vector3d> second = [b.A, b.B, b.C];
@@ -47,7 +45,7 @@ public static partial class SceneClash
             double distance = SceneMeasure.Length(one - two);
             if (distance >= shortest) return;
             shortest = distance;
-            midpoint = one * 0.5 + two * 0.5;
+            midpoint = Midpoint(one, two);
         }
     }
 
