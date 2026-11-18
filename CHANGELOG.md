@@ -6,6 +6,9 @@ and the project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## [Unreleased]
 
+### Added
+- Optional preview projects for reading GLB and OBJ, writing GLB, measuring geometry, checking triangle surface intersections, comparing revisions, querying grids and exporting BCF.
+
 ### Changed
 - `docs/keys.md`: the namespace `nwc:` is registered for `NwcIO.Scene`; its formats are fixed from the first release of the package, 0.12.0. The `nwc` source format names `NwcIO.Scene` as its producer.
 

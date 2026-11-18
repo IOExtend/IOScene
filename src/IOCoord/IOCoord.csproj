@@ -1,0 +1,18 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <Version>0.1.0-preview.1</Version>
+    <PackageId>IOCoord</PackageId>
+    <Description>Measurements, triangle clash checks, revision comparison, grid queries and BCF export for IOScene models.</Description>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <!-- NU5104 reports the prerelease bound that excludes IOScene 0.2 previews. -->
+    <NoWarn>$(NoWarn);NU5104</NoWarn>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="IOScene" />
+    <None Remove="$(MSBuildProjectDirectory)/icon.png" />
+    <None Include="..\IOScene\icon.png" Pack="true" PackagePath="/" Visible="false" />
+  </ItemGroup>
+
+</Project>

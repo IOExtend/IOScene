@@ -49,6 +49,10 @@ dotnet build <other solution> -p:RestoreAdditionalProjectSources=<local-feed>
 
 Do not commit a `nuget.config` that points to a local feed.
 
+`src/IOScene.Formats` and `src/IOCoord` are optional preview projects that consume the public IOScene 0.1 API.
+Their tests are in `tests/IOScene.Tools.Tests`. Packing the solution creates local preview packages.
+Core release tags publish the IOScene package. The optional previews have their own release setup pending.
+
 ## Changing the contract
 
 The rules are in section 5 of [docs/contract.md](docs/contract.md). In short:
