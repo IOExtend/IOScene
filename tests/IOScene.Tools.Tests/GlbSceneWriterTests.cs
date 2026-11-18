@@ -1,4 +1,5 @@
 using System.Buffers.Binary;
+using System.Text;
 using System.Text.Json;
 using IOScene.Formats;
 
@@ -107,6 +108,29 @@ public class GlbSceneWriterTests
 
         using var truncated = new MemoryStream(bytes[..^1]);
         Assert.Throws<InvalidDataException>(() => GlbSceneReader.Load(truncated));
+    }
+
+    [Fact]
+    public void Load_RejectsAnUnsupportedRequiredExtension()
+    {
+        const string json = """
+            {"asset":{"version":"2.0"},"extensionsUsed":["KHR_mesh_quantization"],"extensionsRequired":["KHR_mesh_quantization"]}
+            """;
+        byte[] manifest = Encoding.UTF8.GetBytes(json.PadRight((json.Length + 3) / 4 * 4));
+        using var stream = new MemoryStream();
+        using (var writer = new BinaryWriter(stream, Encoding.UTF8, leaveOpen: true))
+        {
+            writer.Write(0x46546C67u);
+            writer.Write(2u);
+            writer.Write(20 + manifest.Length);
+            writer.Write(manifest.Length);
+            writer.Write(0x4E4F534Au);
+            writer.Write(manifest);
+        }
+
+        stream.Position = 0;
+        var error = Assert.Throws<NotSupportedException>(() => GlbSceneReader.Load(stream));
+        Assert.Contains("KHR_mesh_quantization", error.Message);
     }
 
     [Fact]

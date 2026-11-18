@@ -14,8 +14,9 @@ GlbSceneWriter.Save(scene, "model.glb");
 ```
 
 `GlbSceneReader.Load` reads embedded float32 positions and normals, unsigned indices and base material colours.
-It flattens the node placements into one model and imports triangle, line and point primitives. The OBJ reader
-`ObjSceneReader.Load` groups faces by object and assumes metres with Z up.
+It flattens the node placements into one model and imports triangle, line and point primitives. Files declaring
+required glTF extensions are rejected. The OBJ reader `ObjSceneReader.Load` groups faces by object and assumes
+metres with Z up.
 
 The writer emits [glTF 2.0 binary](https://registry.khronos.org/glTF/specs/2.0/glTF-2.0.html) with the element tree,
 indexed and non-indexed triangles, lines and points, shared mesh buffers, and placements with rotation, translation,

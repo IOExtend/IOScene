@@ -95,6 +95,11 @@ public static class GlbSceneReader
 
         using var jsonDoc = JsonDocument.Parse(jsonBytes);
         var root = jsonDoc.RootElement;
+        if (root.TryGetProperty("extensionsRequired", out var requiredExtensions) &&
+            requiredExtensions.GetArrayLength() > 0)
+        {
+            throw new NotSupportedException($"Required glTF extension is unsupported: {requiredExtensions[0].GetString()}.");
+        }
 
         // Parse accessors & bufferViews
         if (!root.TryGetProperty("accessors", out var accessorsEl) ||
