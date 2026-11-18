@@ -41,6 +41,7 @@ public static partial class SceneClash
         var leftPrimitives = new List<Primitive>();
         var rightPrimitives = new List<Primitive>();
         var meshBounds = query == Query.Hard ? new List<BoundingBox3d>() : null;
+        var solids = query == Query.Containment ? new List<ClosedSolid>() : null;
         for (int placement = 0; placement < scene.Instances.Count; placement++)
         {
             cancellationToken.ThrowIfCancellationRequested();
@@ -51,6 +52,14 @@ public static partial class SceneClash
             if (query is not (Query.Overlap or Query.Duplicate) && geometry.Topology != SceneTopology.Triangles) continue;
             var transform = instance.Transform ?? Transform3d.Identity;
 
+            if (solids is not null)
+            {
+                var solid = BuildClosedSolid(geometry, transform, instance.ElementId, cancellationToken);
+                Add(new(instance.ElementId, solid.Tree.Bounds, MeshIndex: solids.Count));
+                solids.Add(solid);
+                continue;
+            }
+
             int meshIndex = -1;
             if (query is Query.Overlap or Query.Hard or Query.Duplicate)
             {
@@ -58,7 +67,7 @@ public static partial class SceneClash
                 foreach (var vertex in geometry.Vertices)
                 {
                     cancellationToken.ThrowIfCancellationRequested();
-                    bounds = bounds.Encapsulate(WorldVertex(vertex));
+                    bounds = bounds.Encapsulate(PlaceVertex(vertex, transform));
                 }
                 if (bounds.IsEmpty) continue;
                 if (meshBounds is null)
@@ -76,9 +85,9 @@ public static partial class SceneClash
             for (int offset = 0; offset < count; offset += 3)
             {
                 cancellationToken.ThrowIfCancellationRequested();
-                var a = WorldVertex(geometry.Vertices[indexed ? indices[offset] : offset]);
-                var b = WorldVertex(geometry.Vertices[indexed ? indices[offset + 1] : offset + 1]);
-                var c = WorldVertex(geometry.Vertices[indexed ? indices[offset + 2] : offset + 2]);
+                var a = PlaceVertex(geometry.Vertices[indexed ? indices[offset] : offset], transform);
+                var b = PlaceVertex(geometry.Vertices[indexed ? indices[offset + 1] : offset + 1], transform);
+                var c = PlaceVertex(geometry.Vertices[indexed ? indices[offset + 2] : offset + 2], transform);
                 var faceNormal = Vector3d.Cross(b - a, c - a);
                 double length = faceNormal.Length;
                 if (!double.IsFinite(length)) throw new InvalidDataException("A triangle normal is outside the finite range.");
@@ -92,14 +101,6 @@ public static partial class SceneClash
                 if (inLeft) leftPrimitives.Add(primitive);
                 if (inRight) rightPrimitives.Add(primitive);
             }
-
-            Vector3d WorldVertex(Vector3d vertex)
-            {
-                var point = transform.Apply(vertex);
-                if (!double.IsFinite(point.X) || !double.IsFinite(point.Y) || !double.IsFinite(point.Z))
-                    throw new InvalidDataException("The transformed coordinates are outside the finite range.");
-                return point;
-            }
         }
 
         var test = new SceneClashTest
@@ -110,6 +111,7 @@ public static partial class SceneClash
                 Query.Hard => "Hard clashes",
                 Query.Overlap => "Bounding box overlaps",
                 Query.Duplicate => "Duplicate geometry",
+                Query.Containment => "Solid containments",
                 _ => "Surface intersections",
             },
         };
@@ -119,7 +121,7 @@ public static partial class SceneClash
         var bRoot = Build(bPrimitives, 0, bPrimitives.Length, cancellationToken);
         double margin = query switch
         {
-            Query.Overlap => 0,
+            Query.Overlap or Query.Containment => 0,
             Query.Clearance => Math.Max(Tolerance, limit),
             Query.Duplicate => limit,
             _ => Tolerance,
@@ -151,7 +153,9 @@ public static partial class SceneClash
                     {
                         var two = bPrimitives[j];
                         if (one.ElementId == two.ElementId || !Overlaps(one.Bounds, two.Bounds, margin)) continue;
-                        var key = (Math.Min(one.ElementId, two.ElementId), Math.Max(one.ElementId, two.ElementId));
+                        var key = query == Query.Containment
+                            ? (one.ElementId, two.ElementId)
+                            : (Math.Min(one.ElementId, two.ElementId), Math.Max(one.ElementId, two.ElementId));
                         bool found = contacts.TryGetValue(key, out var best);
                         switch (query)
                         {
@@ -175,6 +179,11 @@ public static partial class SceneClash
                                     var centreB = Midpoint(two.Bounds.Min, two.Bounds.Max);
                                     contacts[key] = (Midpoint(centreA, centreB), 0);
                                 }
+                                break;
+                            case Query.Containment:
+                                if (!found && StrictlyWithin(one.Bounds, two.Bounds)
+                                    && IsContained(solids![one.MeshIndex], solids[two.MeshIndex], cancellationToken))
+                                    contacts[key] = (solids[one.MeshIndex].BoundaryPoints[0], null);
                                 break;
                             case Query.Clearance:
                                 if (best.Distance == 0) break;
@@ -217,6 +226,14 @@ public static partial class SceneClash
             });
         }
         return test;
+    }
+
+    private static Vector3d PlaceVertex(Vector3d vertex, Transform3d transform)
+    {
+        var point = transform.Apply(vertex);
+        if (!double.IsFinite(point.X) || !double.IsFinite(point.Y) || !double.IsFinite(point.Z))
+            throw new InvalidDataException("The transformed coordinates are outside the finite range.");
+        return point;
     }
 
     private static Node Build(Primitive[] primitives, int start, int count, CancellationToken token)
@@ -288,7 +305,7 @@ public static partial class SceneClash
     private static readonly Comparer<Primitive> ByY = Comparer<Primitive>.Create((a, b) => a.Bounds.Center.Y.CompareTo(b.Bounds.Center.Y));
     private static readonly Comparer<Primitive> ByZ = Comparer<Primitive>.Create((a, b) => a.Bounds.Center.Z.CompareTo(b.Bounds.Center.Z));
 
-    private enum Query { Intersection, Clearance, Hard, Overlap, Duplicate }
+    private enum Query { Intersection, Clearance, Hard, Overlap, Duplicate, Containment }
 
     private readonly record struct Primitive(long ElementId, BoundingBox3d Bounds,
         Vector3d A = default, Vector3d B = default, Vector3d C = default, Vector3d Normal = default, int MeshIndex = -1);

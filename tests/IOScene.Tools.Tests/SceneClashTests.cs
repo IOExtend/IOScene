@@ -160,6 +160,52 @@ public class SceneClashTests
         Assert.Empty(SceneClash.FindDuplicates(scene, [original.Id], selection, 0.124).Clashes);
     }
 
+    [Fact]
+    public void Containment_IsDirectionalAndAcceptsMirroredClosedGeometry()
+    {
+        var scene = new SceneDocument();
+        var outer = AddBox(scene, "Outer", Vector3d.Zero, 4);
+        var inner = AddBox(scene, "Inner", Vector3d.Zero, 1);
+        scene.Instances[1].Transform = new(-Vector3d.UnitX, Vector3d.UnitY, Vector3d.UnitZ, new(2, 1, 1));
+
+        var match = Assert.Single(SceneClash.FindSolidContainments(scene, [inner.Id], [outer.Id]).Clashes);
+        Assert.Equal(inner.Id, match.Element1Id);
+        Assert.Equal(outer.Id, match.Element2Id);
+        Assert.Null(match.Distance);
+        Assert.Empty(SceneClash.FindSolidContainments(scene, [outer.Id], [inner.Id]).Clashes);
+    }
+
+    [Fact]
+    public void Containment_DistinguishesMaterialFromAnEnclosedCavity()
+    {
+        var scene = new SceneDocument();
+        var outer = AddBox(scene, "Outer", Vector3d.Zero, 4);
+        var geometry = scene.Geometries[0];
+        int offset = geometry.Vertices.Count;
+        var cavityVertices = geometry.Vertices.Select(point => new Vector3d(1, 1, 1) + point * 0.5).ToArray();
+        var cavityIndices = geometry.Indices.Chunk(3).SelectMany(face => new[] { face[0] + offset, face[2] + offset, face[1] + offset }).ToArray();
+        geometry.Vertices = [.. geometry.Vertices, .. cavityVertices];
+        geometry.Indices = [.. geometry.Indices, .. cavityIndices];
+        var insideCavity = AddBox(scene, "In the void", new(1.25, 1.25, 1.25), 0.5);
+        var surroundsCavity = AddBox(scene, "Around the void", new(0.5, 0.5, 0.5), 3);
+        var touchesCavity = AddBox(scene, "Touches the void", new(0.5, 1.5, 1.5), 0.5);
+        var insideMaterial = AddBox(scene, "In material", new(0.25, 0.25, 0.25), 0.5);
+
+        var match = Assert.Single(SceneClash.FindSolidContainments(scene,
+            [insideCavity.Id, surroundsCavity.Id, touchesCavity.Id, insideMaterial.Id], [outer.Id]).Clashes);
+        Assert.Equal(insideMaterial.Id, match.Element1Id);
+    }
+
+    [Fact]
+    public void Containment_RejectsAnOpenTriangleMesh()
+    {
+        var scene = new SceneDocument();
+        var outer = AddBox(scene, "Outer", Vector3d.Zero, 4);
+        var open = scene.AddMesh("Open", [new(1, 1, 1), new(2, 1, 1), new(1, 2, 1)], []);
+
+        Assert.Throws<InvalidDataException>(() => SceneClash.FindSolidContainments(scene, [open.Id], [outer.Id]));
+    }
+
     private static SceneElement AddBox(SceneDocument scene, string name, Vector3d position, double side)
     {
         var element = scene.AddMesh(name,
