@@ -11,12 +11,17 @@ using IOScene.Formats;
 
 var scene = SceneJson.Load("model.scene.json");
 GlbSceneWriter.Save(scene, "model.glb");
+ObjSceneWriter.Save(scene, "model.obj");
 ```
 
 `GlbSceneReader.Load` reads embedded float32 positions and normals, unsigned indices and base material colours.
 It flattens the node placements into one model and imports triangle, line and point primitives. Files declaring
 required glTF extensions are rejected. The OBJ reader `ObjSceneReader.Load` groups faces by object and assumes
 metres with Z up.
+
+`ObjSceneWriter` bakes placed vertices into OBJ with Z up and writes triangle faces, line segments and points.
+Its text-writer overload can also write an adjacent MTL library with effective colours and opacity.
+The OBJ reader currently imports faces and ignores MTL libraries.
 
 The writer emits [glTF 2.0 binary](https://registry.khronos.org/glTF/specs/2.0/glTF-2.0.html) with the element tree,
 indexed and non-indexed triangles, lines and points, shared mesh buffers, and placements with rotation, translation,
