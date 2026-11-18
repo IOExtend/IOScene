@@ -55,10 +55,16 @@ gap. Surface contacts report zero using the same tolerance.
 of the two contacting mesh bounds, as in NwcIO. It reports negative depth in metres, skips positive depths
 below the requested minimum, and keeps zero-depth contacts. `SceneClash.FindBoundingBoxOverlaps` uses the same
 overlap metric and reports the centre of overlapping instance boxes without checking their surfaces. A box
-overlap can include empty space. Exact depth and closed-solid containment are outside these queries.
+overlap can include empty space. These two queries approximate depth using bounds.
 
 `SceneClash.FindDuplicates` compares placed vertices and effective index order within a tolerance in metres.
 It reports a pair when any two of its instances match, independent of material and display name.
+
+`SceneClash.FindSolidContainments` finds a closed mesh that is fully enclosed by another closed mesh
+without surface contact. It reports the contained element first. Meshes must have consistently oriented,
+paired edges and no self-intersections. Reversed cavity shells represent empty space. The winding-number
+test uses oriented triangle solid angles. [Triangle solid angle](https://doi.org/10.1109/TBME.1983.325207),
+[generalized winding numbers](https://users.cs.utah.edu/~ladislav/jacobson13robust/jacobson13robust.pdf)
 
 `SceneDiff.Compare` matches elements by model key and source id. It compares names and types, ordered property sets,
 and ordered vertices and indices in scene coordinates. It reports elements without an identity separately and refuses
