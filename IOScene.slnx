@@ -1,4 +1,7 @@
 <Solution>
   <Project Path="src/IOScene/IOScene.csproj" />
+  <Project Path="src/IOScene.Formats/IOScene.Formats.csproj" />
+  <Project Path="src/IOCoord/IOCoord.csproj" />
   <Project Path="tests/IOScene.Tests/IOScene.Tests.csproj" />
+  <Project Path="tests/IOScene.Tools.Tests/IOScene.Tools.Tests.csproj" />
 </Solution>

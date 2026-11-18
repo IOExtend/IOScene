@@ -80,6 +80,7 @@ fills the same lists directly: `Models`, `Geometries`, `Elements`, `Instances`, 
 - [docs/contract.md][contract]: purpose and invariants, every type, the decisions behind them, what is left out,
   how the contract changes, the file format, the validation codes and the unit grammar.
 - [docs/keys.md][keys]: the registry of property key namespaces and `SourceFormat` values.
+- [Optional tools](docs/tools.md) describes format conversion and coordination built on IOScene.
 - [CHANGELOG.md][changelog], [CONTRIBUTING.md][contributing] and [SECURITY.md][security].
 
 ## License

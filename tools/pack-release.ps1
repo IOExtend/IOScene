@@ -54,7 +54,8 @@ if ($LASTEXITCODE -ne 0) { throw "git archive failed with exit code $LASTEXITCOD
 
 # 3. Pack NuGet packages
 Write-Host "Packing NuGet packages..."
-Invoke-DotNet pack (Join-Path $root 'IOScene.slnx') -c Release --no-build -o $Output
+# The optional previews are packed by CI for testing. Core release tags publish IOScene only.
+Invoke-DotNet pack (Join-Path $root 'src\IOScene\IOScene.csproj') -c Release --no-build -o $Output
 
 # 4. Checksums
 Write-Host "Calculating SHA-256 sums..."
