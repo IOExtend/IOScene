@@ -125,7 +125,7 @@ public static class SceneMeasure
         return a + unit * along;
     }
 
-    private static Vector3d ClosestOnTriangle(Vector3d point, Vector3d a, Vector3d b, Vector3d c)
+    internal static Vector3d ClosestOnTriangle(Vector3d point, Vector3d a, Vector3d b, Vector3d c)
     {
         var ab = b - a;
         var ac = c - a;
@@ -151,7 +151,7 @@ public static class SceneMeasure
         return Length(next - point) < Length(closest - point) ? next : closest;
     }
 
-    private static double Length(Vector3d vector)
+    internal static double Length(Vector3d vector)
     {
         double scale = Math.Max(Math.Abs(vector.X), Math.Max(Math.Abs(vector.Y), Math.Abs(vector.Z)));
         if (scale == 0) return 0;
