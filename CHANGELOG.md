@@ -6,7 +6,11 @@ and the project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## [Unreleased]
 
+## [0.1.2] - 2026-11-19
+
 ### Added
+- `SceneGridSystem.Paths` carries curved or multi-segment axes as ordered points with one label per axis.
+  Paths are optional in format 1. The validation checks that each path has at least two finite points.
 - Optional preview projects for reading GLB and OBJ, writing GLB, measuring geometry, checking triangle surface intersections, comparing revisions, querying grids and exporting BCF.
 
 ### Changed
