@@ -8,6 +8,27 @@ public class SceneJsonTests
 {
     private const string Head = "{\"Kind\":\"ioscene\",\"Format\":1";
 
+    [Fact]
+    public void GridPathsRoundTripAsOrderedPoints()
+    {
+        var scene = new SceneDocument();
+        scene.Models.Add(new SceneModel { Id = 1, Key = "test" });
+        var system = new SceneGridSystem { ModelId = 1 };
+        scene.Grids.Add(system);
+        string baseline = SceneJson.Write(scene);
+        Assert.DoesNotContain("\"Paths\"", baseline);
+        system.Paths = [];
+        Assert.Equal(baseline, SceneJson.Write(scene));
+        system.Paths.Add(new SceneGridPath { Name = "A", Points = [new(0, 0, 0), new(2, 1, 0), new(3, 3, 0)] });
+        var copy = SceneJson.Read(SceneJson.Write(scene));
+        var path = Assert.Single(Assert.Single(copy.Grids).Paths!);
+        Assert.Equal("A", path.Name);
+        Assert.Equal(system.Paths[0].Points, path.Points);
+        Assert.DoesNotContain(copy.Validate(), diagnostic => diagnostic.Code is "grid-path-points" or "not-finite");
+        path.Points.RemoveRange(1, 2);
+        Assert.Contains(copy.Validate(), diagnostic => diagnostic.Code == "grid-path-points");
+    }
+
     [Theory]
     [InlineData("{\"Title\":\"old\",\"Elements\":[]}")]                                    // no Kind: a legacy viewer snapshot
     [InlineData("{\"Kind\":\"ioscene\"}")]                                               // no Format

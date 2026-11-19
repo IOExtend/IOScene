@@ -31,6 +31,19 @@ public sealed class SceneGridSystem
 
     /// <summary>The grid lines.</summary>
     public List<SceneGridLine> Lines { get; set; } = [];
+
+    /// <summary>Curved and multi-segment axes. A path has one label at its two ends.</summary>
+    public List<SceneGridPath>? Paths { get; set; }
+}
+
+/// <summary>One grid axis drawn as a connected sequence of straight segments.</summary>
+public sealed class SceneGridPath
+{
+    /// <summary>Label of the axis.</summary>
+    public string Name { get; set; } = string.Empty;
+
+    /// <summary>At least two ordered points in scene coordinates, in metres.</summary>
+    public List<Vector3d> Points { get; set; } = [];
 }
 
 /// <summary>

@@ -78,7 +78,9 @@ SceneValueKind    Text = 0, Boolean = 1, Integer = 2, Number = 3      // open en
 SceneUnits        constants ("m", "m2", "m3", "rad", "kg", "s", "K") and IsValid(unit)
 
 SceneLevel        int Id; int ModelId; string Name; double? Elevation
-SceneGridSystem   int ModelId; string Name; List<SceneGridLine> Lines     SceneGridLine  Name, Start, End, Elevation
+SceneGridSystem   int ModelId; string Name; List<SceneGridLine> Lines; List<SceneGridPath>? Paths
+SceneGridLine     Name, Start, End, Elevation
+SceneGridPath     Name, Points
 SceneViewpoint    string? Id; string Name; SceneCamera Camera
 SceneCamera       Position, Target, Up, FieldOfView (vertical, radians), AspectRatio, NearDistance, FarDistance,
                   SceneProjection Projection (Perspective = 0, Orthographic = 1)   // open enum
@@ -139,7 +141,7 @@ the right member. Each takes the display string; the library never invents one.
 | Texture coordinates | `v = 0` is the bottom row of the image. The texture is sampled at `(u / ScaleX, v / ScaleY)` with repeat wrapping. Texture offset and rotation are baked into the UVs; they never become members. |
 | Coordinate frame, georeference | Not in 0.1.0. `SceneModel.Frame`, `ToShared` and a geo reference are additive members. They are a precondition of any consumer that tests two models against each other. |
 | Links, federation | The `Models` table plus `ModelId` on elements, levels, grids and schedules. `Models[0]` is the model of the file the producer was given; the others are its links or files federated with it. A merge helper that renumbers ids is added with the first federation consumer. No nested scenes. |
-| Grids | `SceneGridLine.Elevation` is the Z, in scene coordinates, of the level the line is drawn on. `Start` and `End` are authoritative for drawing. |
+| Grids | `SceneGridLine.Elevation` is the Z, in scene coordinates, of the level the line is drawn on. `Start` and `End` are authoritative for drawing. `SceneGridPath.Points` gives at least two ordered points in metres. Draw between consecutive points and label only the first and last points. Producers keep a straight axis in `Lines` and write each curved or multi-segment axis once in `Paths`. Older readers ignore the optional `Paths` member. |
 | Viewpoints | In the scene: optional `Id` (a saved-viewpoint GUID or a BCF viewpoint GUID), name, camera. For an orthographic camera the visible height is `2 * |Target - Position| * tan(FieldOfView / 2)`. Clip planes and visibility lists are additive. |
 | 4D | `SceneSchedule` in the scene. `SceneTask.Progress` is a fraction from 0 to 1. A `PlannedStart` or `PlannedEnd` at its default `0001-01-01T00:00:00+00:00` means "not given": a consumer leaves such a task out of time-based views. |
 | Clash results | `SceneClashTest`, `SceneClashResult` and `SceneClashStatus` in the scene: results only. Rules, tolerances, the engine and the store of statuses across runs belong to the coordination tool. Further fields of a source (assignee, comments, dates) are additive. `Distance` is in metres: below 0 it is the penetration depth, from 0 up it is the clearance (the Navisworks convention). Null means the source did not report it. |
@@ -371,7 +373,8 @@ stable strings. Later versions may add codes.
 | `index-range` | error | A geometry has an index outside its vertices. |
 | `normal-count` | error | A geometry has normals, but not one per vertex. |
 | `uv-count` | error | A geometry has texture coordinates, but not one per vertex. |
-| `not-finite` | error | A number of the scene is NaN or infinite: in a geometry, an instance transform, a property value, a material, a texture scale, a level, a grid line, a camera, a task or a clash. |
+| `not-finite` | error | A number of the scene is NaN or infinite: in a geometry, an instance transform, a property value, a material, a texture scale, a level, a grid axis, a camera, a task or a clash. |
+| `grid-path-points` | error | A grid path has fewer than two points. |
 | `value-payload` | error | A property value of kind `Number` has no `Number`, of kind `Integer` has no `Integer`, or of kind `Boolean` has an `Integer` other than 0 or 1. |
 | `task-tree` | error | A schedule lists one task twice, or a task is inside its own sub-tasks. |
 | `task-depth` | error | A schedule nests tasks deeper than 30 levels. Reported once per schedule. |

@@ -164,6 +164,8 @@ public static class SceneJson
         var lists = new List<JsonPropertyInfo>();
         foreach (var property in info.Properties)
         {
+            if (info.Type == typeof(SceneGridSystem) && property.Name == nameof(SceneGridSystem.Paths))
+                property.ShouldSerialize = static (_, value) => value is List<SceneGridPath> { Count: > 0 };
             // Kind and Format keep their values, null included: their setters reject a wrong one. A member that a
             // holder marks required follows the rules below like any other.
             if (info.Type == typeof(SceneDocument) && property.IsRequired)

@@ -136,6 +136,11 @@ public sealed partial class SceneDocument
             if (!models.Contains(g.ModelId)) Error("dangling-model", $"Grid system '{g.Name}' names model {g.ModelId}.");
             if (!g.Lines.All(line => IsFinite(line.Start) && IsFinite(line.End) && double.IsFinite(line.Elevation)))
                 Error("not-finite", $"Grid system '{g.Name}' has a line with a number that is not finite.");
+            foreach (var path in g.Paths ?? [])
+            {
+                if (path.Points.Count < 2) Error("grid-path-points", $"Grid path '{path.Name}' has fewer than two points.");
+                if (!path.Points.All(IsFinite)) Error("not-finite", $"Grid path '{path.Name}' has a point that is not finite.");
+            }
         }
         foreach (var v in Viewpoints)
         {
