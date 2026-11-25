@@ -80,5 +80,27 @@ addition.
 | `dwg` | DWG drawing | `DwgIO.Scene` (later) |
 | `glb` | binary glTF | `IOScene.Formats` (later) |
 | `obj` | Wavefront OBJ | `IOScene.Formats` (later) |
+| `e57` | ASTM E57 point cloud | `PclIO.Scene` |
+| `rcp` | ReCap project | `PclIO.Scene` |
+| `rcs` | ReCap scan | `PclIO.Scene` |
+| `lgsx` | Leica LGSx container | `PclIO.Scene` |
+| `lgs` | Leica LGS container | `PclIO.Scene` |
+| `fls` | FARO scan | `PclIO.Scene` |
+| `srf` | PinPoint project | `PclIO.Scene` |
+| `c3db` | EdgeWise model | `PclIO.Scene` |
+| `las` | ASPRS LAS | `PclIO.Scene` |
+| `laz` | LASzip-compressed LAS | `PclIO.Scene` |
+| `copc` | Cloud Optimized Point Cloud | `PclIO.Scene` |
+| `ept` | Entwine Point Tile dataset | `PclIO.Scene` |
+| `ptg` | Leica PTG | `PclIO.Scene` |
+| `ccbin` | CC BIN binary entity | `PclIO.Scene` |
+| `pcd` | Point Cloud Library PCD | `PclIO.Scene` |
+| `ply` | Stanford PLY | `PclIO.Scene` |
+| `pts` | ASCII PTS | `PclIO.Scene` |
+| `ptx` | PTX | `PclIO.Scene` |
+| `xyz` | ASCII XYZ / text | `PclIO.Scene` |
+| `sbf` | SBF | `PclIO.Scene` |
+| `pnts` | 3D Tiles point cloud | `PclIO.Scene` |
+| `potree` | Potree octree | `PclIO.Scene` |
 
 A producer outside this list registers an id for its format (usually the file extension) and adds a row here.
