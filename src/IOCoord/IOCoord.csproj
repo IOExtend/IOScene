@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <Version>0.1.0-preview.1</Version>
+    <Version>0.1.0-preview.2</Version>
     <PackageId>IOCoord</PackageId>
     <Description>Measurements, triangle clash checks, revision comparison, grid queries and BCF export for IOScene models.</Description>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
